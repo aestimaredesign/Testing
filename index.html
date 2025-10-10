@@ -1,2075 +1,287 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Power Distribution Systems Calculator</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <style>
-        /* Styles remain unchanged */
-        :root {
-            --primary: #2c3e50;
-            --secondary: #3498db;
-            --success: #27ae60;
-            --warning: #f39c12;
-            --danger: #e74c3c;
-            --light: #ecf0f1;
-            --dark: #34495e;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background-color: #f8f9fa;
-        }
-        
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        
-        header {
-            background: var(--primary);
-            color: white;
-            padding: 1rem 0;
-            margin-bottom: 2rem;
-            border-radius: 8px;
-        }
-        
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 20px;
-        }
-        
-        h1 {
-            font-size: 2rem;
-            font-weight: 600;
-        }
-        
-        .controls {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-        
-        .btn-primary {
-            background: var(--secondary);
-            color: white;
-        }
-        
-        .btn-success {
-            background: var(--success);
-            color: white;
-        }
-        
-        .btn-warning {
-            background: var(--warning);
-            color: white;
-        }
-        
-        .btn-danger {
-            background: var(--danger);
-            color: white;
-        }
-        
-        .btn:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
-        }
-        
-        .calculator-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 2rem;
-        }
-        
-        @media (max-width: 1024px) {
-            .calculator-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-        
-        .input-section, .output-section {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        .section-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 2px solid var(--light);
-            color: var(--primary);
-        }
-        
-        .input-group {
-            margin-bottom: 1rem;
-        }
-        
-        .input-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 10px;
-            align-items: end;
-        }
-        
-        .financial-input-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 10px;
-            align-items: end;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 500;
-            color: var(--dark);
-        }
-        
-        input, select {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        
-        input:focus, select:focus {
-            outline: none;
-            border-color: var(--secondary);
-            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
-        }
-        
-        .unit-toggle {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 1rem;
-        }
-        
-        .unit-btn {
-            flex: 1;
-            padding: 10px;
-            text-align: center;
-            background: var(--light);
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        
-        .unit-btn.active {
-            background: var(--secondary);
-            color: white;
-            border-color: var(--secondary);
-        }
-        
-        .work-item {
-            background: var(--light);
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 15px;
-            border-left: 4px solid var(--secondary);
-        }
-        
-        .work-item-title {
-            font-weight: 600;
-            margin-bottom: 10px;
-            color: var(--primary);
-        }
-        
-        .bill-of-quantity-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
-        }
-        
-        .bill-of-quantity-table th,
-        .bill-of-quantity-table td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-        
-        .bill-of-quantity-table th {
-            background: var(--primary);
-            color: white;
-            font-weight: 600;
-        }
-        
-        .bill-of-quantity-table tr:hover {
-            background-color: #f5f5f5;
-        }
-        
-        .total-row {
-            font-weight: 600;
-            background-color: var(--light) !important;
-        }
-        
-        .section-header {
-            font-weight: 600;
-            background-color: #e9ecef;
-        }
-        
-        .text-right {
-            text-align: right;
-        }
-        
-        .text-center {
-            text-align: center;
-        }
-        
-        .cost-breakdown {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 1rem;
-        }
-        
-        .cost-card {
-            background: white;
-            padding: 15px;
-            border-radius: 6px;
-            text-align: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            border-top: 4px solid var(--secondary);
-        }
-        
-        .cost-value {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--primary);
-            margin: 10px 0;
-        }
-        
-        .validation-error {
-            color: var(--danger);
-            font-size: 0.875rem;
-            margin-top: 5px;
-            display: none;
-        }
-        
-        .tab-container {
-            margin-bottom: 1rem;
-        }
-        
-        .tabs {
-            display: flex;
-            border-bottom: 1px solid #ddd;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
-        }
-        
-        .tab {
-            padding: 10px 20px;
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-        }
-        
-        .tab.active {
-            border-bottom-color: var(--secondary);
-            color: var(--secondary);
-            font-weight: 600;
-        }
-        
-        .tab-content {
-            display: none;
-        }
-        
-        .tab-content.active {
-            display: block;
-        }
-        
-        .export-options {
-            display: flex;
-            gap: 10px;
-            margin-top: 1rem;
-            flex-wrap: wrap;
-        }
-        
-        .hidden {
-            display: none;
-        }
-        
-        .standard-toggle {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 1rem;
-        }
-        
-        .standard-btn {
-            flex: 1;
-            padding: 10px;
-            text-align: center;
-            background: var(--light);
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        
-        .standard-btn.active {
-            background: var(--success);
-            color: white;
-            border-color: var(--success);
-        }
-        
-        .unit-label {
-            font-size: 0.8rem;
-            color: #666;
-            margin-top: 2px;
-        }
-        
-        .help-section {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            border-left: 4px solid var(--success);
-        }
-        
-        .formula-box {
-            background: #e8f4fd;
-            padding: 15px;
-            border-radius: 6px;
-            margin: 10px 0;
-            border-left: 4px solid var(--secondary);
-            font-family: 'Courier New', monospace;
-        }
-        
-        .reference-box {
-            background: #fff3cd;
-            padding: 15px;
-            border-radius: 6px;
-            margin: 10px 0;
-            border-left: 4px solid var(--warning);
-        }
-        
-        .step-guide {
-            background: #d1ecf1;
-            padding: 15px;
-            border-radius: 6px;
-            margin: 10px 0;
-            border-left: 4px solid var(--info);
-        }
-        
-        .step-number {
-            display: inline-block;
-            width: 25px;
-            height: 25px;
-            background: var(--primary);
-            color: white;
-            border-radius: 50%;
-            text-align: center;
-            line-height: 25px;
-            margin-right: 10px;
-            font-weight: bold;
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Power Distribution Systems Calculator</title>
+
+<!-- External libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+:root {
+  --primary: #2c3e50;
+  --accent: #3498db;
+  --success: #27ae60;
+  --warning: #f39c12;
+  --danger: #e74c3c;
+  --light: #f7f9fb;
+  --muted: #777;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Segoe UI","Helvetica Neue",Helvetica,Arial,sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  background: #f2f5f8;
+  color: #222;
+}
+
+.container { max-width: 1350px; margin: 18px auto; padding: 18px; }
+
+header.app-header {
+  background: var(--primary);
+  color: #fff;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 6px 18px rgba(44,62,80,0.06);
+}
+.app-header .row { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.app-title h1 { font-size: 18px; margin: 0; font-weight: 700; }
+
+.tabs { display: flex; border-bottom: 2px solid #e0e6eb; margin-bottom: 10px; }
+.tab {
+  padding: 10px 16px; cursor: pointer;
+  background: #f4f6f8; border: 1px solid #e0e6eb; border-bottom: none;
+  border-radius: 6px 6px 0 0; margin-right: 6px;
+  font-weight: 600; font-size: 13px; color: #333;
+}
+.tab.active { background: #fff; color: var(--accent); border-color: #d0dae0; }
+.tab-content { display: none; padding: 14px; background: #fff; border: 1px solid #e0e6eb; border-radius: 0 6px 6px 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.02);}
+.tab-content.active { display: block; }
+
+.btn { display: inline-block; padding: 8px 12px; border-radius: 6px; border: 0; cursor: pointer; font-weight: 700; font-size: 13px; }
+.btn-primary { background: var(--accent); color:#fff; }
+.btn-success { background: var(--success); color:#fff; }
+.btn-warning { background: var(--warning); color:#fff; }
+.btn-danger  { background: var(--danger); color:#fff; }
+
+.input-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 12px; }
+label { font-size: 13px; margin-bottom: 6px; display: block; font-weight: 600; color: #333; }
+input[type="text"], input[type="number"], select {
+  width: 100%; padding: 8px 10px; border-radius: 6px;
+  border: 1px solid #e0e6eb; font-size: 13px; background: #fff;
+}
+
+.panel { background:#fff; border-radius:8px; padding:14px; box-shadow: 0 6px 18px rgba(10,20,30,0.04); margin-top: 20px; }
+.section-title { font-weight:700; color:var(--primary); font-size:15px; border-bottom:2px solid #f0f4f7; margin-bottom: 10px; padding-bottom: 6px; }
+
+.table { width:100%; border-collapse:collapse; margin-top:10px; font-size:13px; }
+.table th, .table td { padding: 8px; border-bottom:1px solid #eef3f7; vertical-align: middle; }
+.table th { background: var(--primary); color:#fff; font-weight:700; }
+.text-right { text-align:right; }
+.text-center { text-align:center; }
+.total-row { background:#f6f9fb; font-weight:700; }
+
+.hidden { display:none; }
+.note { font-size:13px; color: var(--muted); margin-top:8px; }
+</style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <div class="header-content">
-                <h1>Power Distribution Systems Calculator</h1>
-                <div class="controls">
-                    <button class="btn btn-primary" id="saveBtn">Save Project</button>
-                    <button class="btn btn-warning" id="loadBtn">Load Project</button>
-                    <button class="btn btn-success" id="exportPdfBtn">Export PDF</button>
-                    <button class="btn btn-success" id="exportExcelBtn">Export Excel</button>
-                    <button class="btn btn-danger" id="resetBtn">Reset</button>
-                </div>
-            </div>
-        </header>
+<div class="container">
 
-        <div class="calculator-grid">
-            <div class="input-section">
-                <h2 class="section-title">Project Inputs</h2>
-                
-                <div class="input-group">
-                    <label>Project Name</label>
-                    <input type="text" id="projectName" placeholder="Enter project name">
-                </div>
-                
-                <div class="input-group">
-                    <label>Unit System</label>
-                    <div class="unit-toggle">
-                        <div class="unit-btn active" data-unit="metric">Metric (SI)</div>
-                        <div class="unit-btn" data-unit="imperial">Imperial (US)</div>
-                    </div>
-                </div>
-                
-                <div class="input-group">
-                    <label>Electrical Standards</label>
-                    <div class="standard-toggle">
-                        <div class="standard-btn active" data-standard="philippine">Philippine (PEC)</div>
-                        <div class="standard-btn" data-standard="international">International (IEC)</div>
-                    </div>
-                </div>
-                
-                <div class="tab-container">
-                    <div class="tabs">
-                        <div class="tab active" data-tab="general">General Parameters</div>
-                        <div class="tab" data-tab="distribution">Distribution Systems</div>
-                        <div class="tab" data-tab="cables">Cables & Wiring</div>
-                        <div class="tab" data-tab="costs">Additional Costs</div>
-                        <div class="tab" data-tab="help">Help & Reference</div>
-                    </div>
-                    
-                    <div class="tab-content active" id="general-tab">
-                        <div class="input-row">
-                            <div class="input-group">
-                                <label>Labor Rate (per hour)</label>
-                                <input type="number" id="laborRate" value="250" step="0.01">
-                                <div class="unit-label">PHP/hour</div>
-                            </div>
-                            <div class="input-group">
-                                <label>Overhead Rate (%)</label>
-                                <input type="number" id="overheadRate" value="15" step="0.1">
-                            </div>
-                            <div class="input-group">
-                                <label>Profit Margin (%)</label>
-                                <input type="number" id="profitMarginRate" value="20" step="0.1">
-                            </div>
-                        </div>
-                        <div class="input-row">
-                            <div class="input-group">
-                                <label>Currency</label>
-                                <select id="currency">
-                                    <option value="PHP">Philippine Peso (₱)</option>
-                                    <option value="USD">US Dollar ($)</option>
-                                    <option value="EUR">Euro (€)</option>
-                                    <option value="JPY">Japanese Yen (¥)</option>
-                                </select>
-                            </div>
-                            <div class="input-group">
-                                <label>Project Location</label>
-                                <input type="text" id="projectLocation" placeholder="e.g., Manila, Philippines">
-                            </div>
-                            <div class="input-group">
-                                <label>Project Date</label>
-                                <input type="date" id="projectDate">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="tab-content" id="distribution-tab">
-                        <div class="work-item">
-                            <div class="work-item-title">Main Distribution Boards (MDBs)</div>
-                            <div class="input-row">
-                                <div class="input-group">
-                                    <label>Quantity</label>
-                                    <input type="number" id="mdbQty" value="1" min="0">
-                                    <div class="unit-label">pcs</div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Unit Cost</label>
-                                    <input type="number" id="mdbUnitCost" value="50000" step="0.01">
-                                    <div class="unit-label">currency</div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Labor Hours per Unit</label>
-                                    <input type="number" id="mdbLaborHours" value="16" step="0.1">
-                                    <div class="unit-label">hours</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="work-item">
-                            <div class="work-item-title">Sub-Main Distribution Boards (SMDBs)</div>
-                            <div class="input-row">
-                                <div class="input-group">
-                                    <label>Quantity</label>
-                                    <input type="number" id="smdbQty" value="4" min="0">
-                                    <div class="unit-label">pcs</div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Unit Cost</label>
-                                    <input type="number" id="smdbUnitCost" value="25000" step="0.01">
-                                    <div class="unit-label">currency</div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Labor Hours per Unit</label>
-                                    <input type="number" id="smdbLaborHours" value="12" step="0.1">
-                                    <div class="unit-label">hours</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="work-item">
-                            <div class="work-item-title">Distribution Panels</div>
-                            <div class="input-row">
-                                <div class="input-group">
-                                    <label>Quantity</label>
-                                    <input type="number" id="panelQty" value="8" min="0">
-                                    <div class="unit-label">pcs</div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Unit Cost</label>
-                                    <input type="number" id="panelUnitCost" value="8000" step="0.01">
-                                    <div class="unit-label">currency</div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Labor Hours per Unit</label>
-                                    <input type="number" id="panelLaborHours" value="6" step="0.1">
-                                    <div class="unit-label">hours</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="work-item">
-                            <div class="work-item-title">Circuit Breakers</div>
-                            <div class="input-row">
-                                <div class="input-group">
-                                    <label>Quantity</label>
-                                    <input type="number" id="breakerQty" value="24" min="0">
-                                    <div class="unit-label">pcs</div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Unit Cost</label>
-                                    <input type="number" id="breakerUnitCost" value="1200" step="0.01">
-                                    <div class="unit-label">currency</div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Labor Hours per Unit</label>
-                                    <input type="number" id="breakerLaborHours" value="0.5" step="0.1">
-                                    <div class="unit-label">hours</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="tab-content" id="cables-tab">
-                        <div class="work-item">
-                            <div class="work-item-title">Power Cables</div>
-                            <div class="input-row">
-                                <div class="input-group">
-                                    <label>Length</label>
-                                    <input type="number" id="cableLength" value="500" min="0" step="0.1">
-                                    <div class="unit-label length-unit">meters</div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Cost per Unit</label>
-                                    <input type="number" id="cableCostPerUnit" value="150" step="0.01">
-                                    <div class="unit-label">currency/<span class="length-unit">m</span></div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Labor Hours per 100<span class="length-unit">m</span></label>
-                                    <input type="number" id="cableLaborHours" value="8" step="0.1">
-                                    <div class="unit-label">hours</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="work-item">
-                            <div class="work-item-title">Cable Trays/Conduits</div>
-                            <div class="input-row">
-                                <div class="input-group">
-                                    <label>Length</label>
-                                    <input type="number" id="trayLength" value="300" min="0" step="0.1">
-                                    <div class="unit-label length-unit">meters</div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Cost per Unit</label>
-                                    <input type="number" id="trayCostPerUnit" value="250" step="0.01">
-                                    <div class="unit-label">currency/<span class="length-unit">m</span></div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Labor Hours per 100<span class="length-unit">m</span></label>
-                                    <input type="number" id="trayLaborHours" value="12" step="0.1">
-                                    <div class="unit-label">hours</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="work-item">
-                            <div class="work-item-title">Bus Ducts</div>
-                            <div class="input-row">
-                                <div class="input-group">
-                                    <label>Length</label>
-                                    <input type="number" id="busductLength" value="50" min="0" step="0.1">
-                                    <div class="unit-label length-unit">meters</div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Cost per Unit</label>
-                                    <input type="number" id="busductCostPerUnit" value="2000" step="0.01">
-                                    <div class="unit-label">currency/<span class="length-unit">m</span></div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Labor Hours per 10<span class="length-unit">m</span></label>
-                                    <input type="number" id="busductLaborHours" value="16" step="0.1">
-                                    <div class="unit-label">hours</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="work-item">
-                            <div class="work-item-title">Wiring Devices (Outlets, Switches)</div>
-                            <div class="input-row">
-                                <div class="input-group">
-                                    <label>Quantity</label>
-                                    <input type="number" id="wiringDeviceQty" value="60" min="0">
-                                    <div class="unit-label">pcs</div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Unit Cost</label>
-                                    <input type="number" id="wiringDeviceUnitCost" value="150" step="0.01">
-                                    <div class="unit-label">currency</div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Labor Hours per Unit</label>
-                                    <input type="number" id="wiringDeviceLaborHours" value="0.25" step="0.1">
-                                    <div class="unit-label">hours</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="tab-content" id="costs-tab">
-                        <div class="work-item">
-                            <div class="work-item-title">Direct Costs</div>
-                            <div class="financial-input-row">
-                                <div class="input-group">
-                                    <label>Equipment Rental/Mobilization</label>
-                                    <input type="number" id="equipmentCost" value="15000" step="0.01">
-                                    <div class="unit-label">currency</div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Tools & Consumables</label>
-                                    <input type="number" id="toolsCost" value="5000" step="0.01">
-                                    <div class="unit-label">currency</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="work-item">
-                            <div class="work-item-title">Indirect Costs</div>
-                            <div class="financial-input-row">
-                                <div class="input-group">
-                                    <label>Contingency (%)</label>
-                                    <input type="number" id="contingencyRate" value="10" step="0.1">
-                                </div>
-                                <div class="input-group">
-                                    <label>Profit Margin (%)</label>
-                                    <input type="number" id="profitMarginRate" value="20" step="0.1">
-                                </div>
-                            </div>
-                            <div class="financial-input-row">
-                                <div class="input-group">
-                                    <label>VAT Tax Rate (%)</label>
-                                    <input type="number" id="taxRate" value="12" step="0.1">
-                                </div>
-                                <div class="input-group">
-                                    <label>Permits & Fees</label>
-                                    <input type="number" id="permitsCost" value="10000" step="0.01">
-                                    <div class="unit-label">currency</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="tab-content" id="help-tab">
-                        <!-- Help content remains unchanged -->
-                        <div class="help-section">
-                            <h3>How to Use This Calculator</h3>
-                            <div class="step-guide">
-                                <p><span class="step-number">1</span> <strong>Project Information:</strong> Enter basic project details including project name, location, and select your preferred unit system and electrical standards.</p>
-                                <p><span class="step-number">2</span> <strong>Distribution Systems:</strong> Input quantities and costs for main distribution boards (MDBs), sub-main boards (SMDBs), distribution panels, and circuit breakers.</p>
-                                <p><span class="step-number">3</span> <strong>Cables & Wiring:</strong> Specify lengths and costs for power cables, cable trays/conduits, bus ducts, and wiring devices.</p>
-                                <p><span class="step-number">4</span> <strong>Additional Costs:</strong> Configure direct costs (equipment, tools, permits) and indirect costs (contingency, profit margin, VAT).</p>
-                                <p><span class="step-number">5</span> <strong>Calculate:</strong> Click "Calculate" to generate your cost breakdown and labor requirements.</p>
-                                <p><span class="step-number">6</span> <strong>Export:</strong> Use the export buttons to save your estimate as PDF or Excel for professional submissions.</p>
-                            </div>
-                        </div>
-
-                        <div class="help-section">
-                            <h3>Calculation Formulas</h3>
-                            <div class="formula-box">
-                                <h4>Direct Costs:</h4>
-                                <p><strong>Total Material Cost</strong> = Σ(Quantity × Unit Cost)</p>
-                                <p><strong>Total Labor Cost</strong> = Σ(Quantity × Labor Hours × Labor Rate)</p>
-                                <p><strong>Total Direct Cost</strong> = Materials + Labor + Equipment + Tools + Permits</p>
-                                
-                                <h4>Indirect Costs:</h4>
-                                <p><strong>Overhead Cost</strong> = Total Direct Cost × Overhead Rate</p>
-                                <p><strong>Contingency Cost</strong> = Total Direct Cost × Contingency Rate</p>
-                                <p><strong>Total Indirect Cost</strong> = Overhead + Contingency</p>
-                                
-                                <h4>Profit & Tax:</h4>
-                                <p><strong>Cost Before Profit</strong> = Direct Costs + Indirect Costs</p>
-                                <p><strong>Profit</strong> = Cost Before Profit × Profit Margin Rate</p>
-                                <p><strong>Total Before Tax</strong> = Cost Before Profit + Profit</p>
-                                <p><strong>VAT Tax</strong> = Total Before Tax × VAT Rate</p>
-                                <p><strong>Final Price</strong> = Total Before Tax + VAT Tax</p>
-                            </div>
-                        </div>
-
-                        <div class="help-section">
-                            <h3>References & Standards</h3>
-                            <div class="reference-box">
-                                <h4>Philippine Electrical Code (PEC) References:</h4>
-                                <ul>
-                                    <li><strong>PEC Article 2.40.1.1</strong> - Requirements for Main Distribution Boards</li>
-                                    <li><strong>PEC Article 3.10.2.12</strong> - Cable Installation Standards</li>
-                                    <li><strong>PEC Article 2.30.6.1</strong> - Circuit Breaker Specifications</li>
-                                    <li><strong>PEC Article 1.10.1.2</strong> - General Installation Requirements</li>
-                                </ul>
-                                
-                                <h4>International Standards (IEC):</h4>
-                                <ul>
-                                    <li><strong>IEC 61439</strong> - Low-voltage switchgear and controlgear assemblies</li>
-                                    <li><strong>IEC 60364</strong> - Electrical installations of buildings</li>
-                                    <li><strong>IEC 60947</strong> - Low-voltage switchgear and controlgear</li>
-                                    <li><strong>IEC 60204</strong> - Safety of machinery - Electrical equipment</li>
-                                </ul>
-                                
-                                <h4>Legal & Tax References:</h4>
-                                <ul>
-                                    <li><strong>Philippine VAT Law</strong> - 12% Value Added Tax (RA 9337)</li>
-                                    <li><strong>Construction Industry Authority</strong> - Standard markup practices</li>
-                                    <li><strong>DOLE Department Order</strong> - Standard labor rates for electrical works</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <div class="help-section">
-                            <h3>Labor & Productivity Rates</h3>
-                            <div class="reference-box">
-                                <h4>Standard Labor Rates (Philippines):</h4>
-                                <ul>
-                                    <li><strong>Master Electrician</strong>: ₱300-400/hour</li>
-                                    <li><strong>Journeyman Electrician</strong>: ₱250-350/hour</li>
-                                    <li><strong>Apprentice/Electrician Helper</strong>: ₱150-250/hour</li>
-                                </ul>
-                                
-                                <h4>Productivity Standards:</h4>
-                                <ul>
-                                    <li><strong>MDB Installation</strong>: 12-16 hours per unit</li>
-                                    <li><strong>SMDB Installation</strong>: 8-12 hours per unit</li>
-                                    <li><strong>Cable Installation</strong>: 8-12 hours per 100 meters</li>
-                                    <li><strong>Bus Duct Installation</strong>: 12-16 hours per 10 meters</li>
-                                    <li><strong>Circuit Breaker Installation</strong>: 0.5-1 hour per unit</li>
-                                </ul>
-                                
-                                <h4>Basis for Rates:</h4>
-                                <ul>
-                                    <li>Philippine Construction Industry Authority guidelines</li>
-                                    <li>DOLE prescribed wage rates</li>
-                                    <li>Industry standard productivity benchmarks</li>
-                                    <li>Historical project data analysis</li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <div class="help-section">
-                            <h3>Cost Categorization</h3>
-                            <div class="reference-box">
-                                <h4>Direct Costs (Project-Specific):</h4>
-                                <ul>
-                                    <li>Materials (MDBs, SMDBs, cables, panels, breakers)</li>
-                                    <li>Labor (installation workforce)</li>
-                                    <li>Equipment Rental & Mobilization</li>
-                                    <li>Tools & Consumables</li>
-                                    <li>Permits & Regulatory Fees</li>
-                                </ul>
-                                
-                                <h4>Indirect Costs (Overhead):</h4>
-                                <ul>
-                                    <li>General & Administrative Overhead (15-25%)</li>
-                                    <li>Contingency (5-15%)</li>
-                                </ul>
-                                
-                                <h4>Markup:</h4>
-                                <ul>
-                                    <li>Profit Margin (15-25%)</li>
-                                    <li>VAT Tax (12% in Philippines)</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="validation-error" id="validationError">
-                    Please check your inputs. Some values are missing or invalid.
-                </div>
-                
-                <button class="btn btn-primary" id="calculateBtn" style="width: 100%; padding: 12px;">
-                    Calculate
-                </button>
-            </div>
-            
-            <div class="output-section">
-                <h2 class="section-title">Estimate Results</h2>
-                
-                <div id="resultsPlaceholder">
-                    <p>Enter your project details and click "Calculate" to see results.</p>
-                </div>
-                
-                <div id="resultsContent" class="hidden">
-                    <h3>Project: <span id="resultProjectName"></span></h3>
-                    <p><strong>Location:</strong> <span id="resultProjectLocation"></span></p>
-                    <p><strong>Date:</strong> <span id="resultProjectDate"></span></p>
-                    <p><strong>Standard:</strong> <span id="resultStandard"></span></p>
-                    
-                    <h4 style="margin-top: 20px;">Bill of Quantity</h4>
-                    <table class="bill-of-quantity-table" id="billOfQuantityTable">
-                        <thead>
-                            <tr>
-                                <th class="text-center">Item No.</th>
-                                <th>Scope of Work</th>
-                                <th class="text-center">Quantity</th>
-                                <th class="text-center">Unit</th>
-                                <th class="text-right">Material Cost</th>
-                                <th class="text-right">Labor Cost</th>
-                                <th class="text-right">Total Cost</th>
-                            </tr>
-                        </thead>
-                        <tbody id="billOfQuantityTableBody">
-                            <!-- Filled by JavaScript -->
-                        </tbody>
-                    </table>
-                    
-                    <!-- Improvement: Removed separate "Other Costs" table; merged permits into "Indirect Costs" table for consistency -->
-                    
-                    <h4 style="margin-top: 20px;">Indirect Costs</h4>
-                    <table class="bill-of-quantity-table">
-                        <thead>
-                            <tr>
-                                <th class="text-center">Item No.</th>
-                                <th>Scope of Work</th>
-                                <th class="text-center">Quantity</th>
-                                <th class="text-center">Unit</th>
-                                <th class="text-right">Material Cost</th>
-                                <th class="text-right">Labor Cost</th>
-                                <th class="text-right">Total Cost</th>
-                            </tr>
-                        </thead>
-                        <tbody id="indirectCostsTableBody">
-                            <!-- Filled by JavaScript -->
-                        </tbody>
-                    </table>
-                    
-                    <!-- Improvement: Simplified summary table to avoid semantic confusion; now "Category" and "Total Cost" with subtotals -->
-                    <h4 style="margin-top: 20px;">Summary</h4>
-                    <table class="bill-of-quantity-table">
-                        <thead>
-                            <tr>
-                                <th>Category</th>
-                                <th class="text-right">Total Cost</th>
-                            </tr>
-                        </thead>
-                        <tbody id="summaryTableBody">
-                            <!-- Filled by JavaScript -->
-                        </tbody>
-                    </table>
-                    
-                    <div class="export-options">
-                        <button class="btn btn-success" id="saveResultsBtn">Save Results as JSON</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="row">
+      <div class="app-title"><h1>Power Distribution Systems Calculator</h1></div>
+      <div class="header-controls">
+        <button id="saveBtn" class="btn btn-primary">Save Project</button>
+        <button id="loadBtn" class="btn btn-warning">Load Project</button>
+        <button id="exportPdfBtn" class="btn btn-success">Export PDF</button>
+        <button id="exportExcelBtn" class="btn btn-success">Export Excel</button>
+        <button id="resetBtn" class="btn btn-danger">Reset</button>
+      </div>
     </div>
+  </header>
 
-    <input type="file" id="fileInput" class="hidden" accept=".json">
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab active" data-tab="general">General Parameters</div>
+    <div class="tab" data-tab="distribution">Distribution Systems</div>
+    <div class="tab" data-tab="cables">Cables & Wiring</div>
+    <div class="tab" data-tab="additional">Additional Costs</div>
+    <div class="tab" data-tab="help">Help & Reference</div>
+  </div>
 
-    <script>
-        // Improvement: Added constant for unit conversion factor (feet per meter)
-        const FEET_PER_METER = 3.28084;
+  <!-- TAB CONTENT: GENERAL -->
+  <div id="general-tab" class="tab-content active">
+    <h2 class="section-title">General Parameters</h2>
+    <div class="input-row">
+      <div><label>Project Name</label><input type="text" id="projectName"></div>
+      <div><label>Client Name</label><input type="text" id="clientName"></div>
+      <div><label>Location</label><input type="text" id="projectLocation"></div>
+    </div>
+    <div class="input-row">
+      <div><label>Prepared By</label><input type="text" id="preparedBy"></div>
+      <div><label>Labor Rate (per hr)</label><input type="number" id="laborRate" value="100"></div>
+      <div><label>VAT Rate (%)</label><input type="number" id="taxRate" value="12"></div>
+    </div>
+    <p class="note">Enter project details and financial parameters here.</p>
+    <button id="calculateBtn" class="btn btn-primary">Calculate</button>
+  </div>
 
-        // Global variables
-        let currentUnitSystem = 'metric';
-        let currentStandard = 'philippine';
-        let projectData = {};
-        
-        // DOM elements
-        const unitButtons = document.querySelectorAll('.unit-btn');
-        const standardButtons = document.querySelectorAll('.standard-btn');
-        const tabs = document.querySelectorAll('.tab');
-        const tabContents = document.querySelectorAll('.tab-content');
-        const calculateBtn = document.getElementById('calculateBtn');
-        const saveBtn = document.getElementById('saveBtn');
-        const loadBtn = document.getElementById('loadBtn');
-        const resetBtn = document.getElementById('resetBtn');
-        const exportPdfBtn = document.getElementById('exportPdfBtn');
-        const exportExcelBtn = document.getElementById('exportExcelBtn');
-        const saveResultsBtn = document.getElementById('saveResultsBtn');
-        const fileInput = document.getElementById('fileInput');
-        const validationError = document.getElementById('validationError');
-        const resultsPlaceholder = document.getElementById('resultsPlaceholder');
-        const resultsContent = document.getElementById('resultsContent');
-        
-        // Initialize date to today
-        document.getElementById('projectDate').valueAsDate = new Date();
-        
-        // Event Listeners
-        document.addEventListener('DOMContentLoaded', function() {
-            // Unit system toggle - Improvement: Added conversion logic for lengths and labor hours
-            unitButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    const newUnit = this.getAttribute('data-unit');
-                    if (newUnit === currentUnitSystem) return; // No change
+  <!-- TAB CONTENT: DISTRIBUTION -->
+  <div id="distribution-tab" class="tab-content">
+    <h2 class="section-title">Distribution Systems</h2>
+    <div class="input-row">
+      <div><label>MDBs</label><input type="number" id="mdbQty" value="0"></div>
+      <div><label>SMDBs</label><input type="number" id="smdbQty" value="0"></div>
+      <div><label>Panels</label><input type="number" id="panelQty" value="0"></div>
+    </div>
+    <div class="input-row">
+      <div><label>Breakers</label><input type="number" id="breakerQty" value="0"></div>
+    </div>
+  </div>
 
-                    unitButtons.forEach(btn => btn.classList.remove('active'));
-                    this.classList.add('active');
+  <!-- TAB CONTENT: CABLES -->
+  <div id="cables-tab" class="tab-content">
+    <h2 class="section-title">Cables & Wiring</h2>
+    <div class="input-row">
+      <div><label>Cables (m)</label><input type="number" id="cableLength" value="0"></div>
+      <div><label>Cable Trays (m)</label><input type="number" id="trayLength" value="0"></div>
+      <div><label>Wiring Devices</label><input type="number" id="wiringDeviceQty" value="0"></div>
+    </div>
+  </div>
 
-                    // Calculate conversion factors
-                    let lengthFactor = 1;
-                    let laborFactor = 1;
-                    if (newUnit === 'imperial' && currentUnitSystem === 'metric') {
-                        lengthFactor = FEET_PER_METER;
-                        laborFactor = 1 / FEET_PER_METER; // Adjust labor hours per distance
-                    } else if (newUnit === 'metric' && currentUnitSystem === 'imperial') {
-                        lengthFactor = 1 / FEET_PER_METER;
-                        laborFactor = FEET_PER_METER;
-                    }
+  <!-- TAB CONTENT: ADDITIONAL -->
+  <div id="additional-tab" class="tab-content">
+    <h2 class="section-title">Additional Costs</h2>
+    <div class="input-row">
+      <div><label>Equipment Cost</label><input type="number" id="equipmentCost" value="0"></div>
+      <div><label>Tools Cost</label><input type="number" id="toolsCost" value="0"></div>
+      <div><label>Permits Cost</label><input type="number" id="permitsCost" value="0"></div>
+    </div>
+  </div>
 
-                    // Convert length inputs
-                    const lengthInputIds = ['cableLength', 'trayLength', 'busductLength'];
-                    lengthInputIds.forEach(id => {
-                        const input = document.getElementById(id);
-                        input.value = safeNumber(input.value) * lengthFactor;
-                    });
+  <!-- TAB CONTENT: HELP -->
+  <div id="help-tab" class="tab-content">
+    <h2 class="section-title">Help & Reference</h2>
+    <p><b>Guide:</b> Fill inputs → Calculate → Export</p>
+    <p><b>References:</b> PEC, IEC Standards</p>
+    <p><b>Formulas:</b> Material + Labor + Indirects + Profit + VAT</p>
+  </div>
 
-                    // Convert labor hour inputs (per distance)
-                    const laborInputIds = ['cableLaborHours', 'trayLaborHours', 'busductLaborHours'];
-                    laborInputIds.forEach(id => {
-                        const input = document.getElementById(id);
-                        input.value = safeNumber(input.value) * laborFactor;
-                    });
+  <!-- RESULTS -->
+  <div class="output-section">
+    <h2 class="section-title">Estimate Results</h2>
+    <div id="resultsPlaceholder"><p>Enter details and click Calculate.</p></div>
+    <div id="resultsContent" class="hidden">
+      <h3>Project: <span id="resultProjectName"></span></h3>
+      <p><strong>Client:</strong> <span id="resultClientName"></span></p>
+      <p><strong>Location:</strong> <span id="resultProjectLocation"></span></p>
+      <p><strong>Date:</strong> <span id="resultProjectDate"></span></p>
+      <p><strong>Prepared By:</strong> <span id="resultPreparedBy"></span></p>
+      <p><strong>Standard:</strong> <span id="resultStandard"></span></p>
 
-                    currentUnitSystem = newUnit;
-                    updateUnitLabels();
-                });
-            });
-            
-            // Standard toggle - Improvement: Sync currency with standard
-            standardButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    standardButtons.forEach(btn => btn.classList.remove('active'));
-                    this.classList.add('active');
-                    currentStandard = this.getAttribute('data-standard');
-                    updateStandards();
-                });
-            });
-            
-            // Tab navigation
-            tabs.forEach(tab => {
-                tab.addEventListener('click', function() {
-                    const tabId = this.getAttribute('data-tab');
-                    
-                    tabs.forEach(t => t.classList.remove('active'));
-                    tabContents.forEach(c => c.classList.remove('active'));
-                    
-                    this.classList.add('active');
-                    document.getElementById(`${tabId}-tab`).classList.add('active');
-                });
-            });
-            
-            // Calculate button
-            calculateBtn.addEventListener('click', calculateEstimate);
-            
-            // Save/Load buttons
-            saveBtn.addEventListener('click', saveProject);
-            loadBtn.addEventListener('click', () => fileInput.click());
-            fileInput.addEventListener('change', loadProject);
-            
-            // Reset button
-            resetBtn.addEventListener('click', resetCalculator);
-            
-            // Export buttons
-            exportPdfBtn.addEventListener('click', exportToPdf);
-            exportExcelBtn.addEventListener('click', exportToExcel);
-            saveResultsBtn.addEventListener('click', saveResultsAsJson);
-            
-            // Input validation
-            setupInputValidation();
-        });
-        
-        // Utility functions
-        function safeNumber(v, fallback = 0) {
-            const n = Number(v);
-            if (isNaN(n)) return fallback;
-            return n;
-        }
+      <h4>Bill of Quantity</h4>
+      <table class="table">
+        <thead><tr><th>#</th><th>Item</th><th>Qty</th><th>Unit</th><th>Material</th><th>Labor</th><th>Total</th></tr></thead>
+        <tbody id="billOfQuantityTableBody"></tbody>
+      </table>
 
-        function formatNumber(num, dp = 2) {
-            if (typeof num !== 'number' || isNaN(num)) return '';
-            const rounded = Math.round((num + Number.EPSILON) * Math.pow(10, dp)) / Math.pow(10, dp);
-            return rounded.toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
-        }
+      <h4>Indirect Costs</h4>
+      <table class="table"><tbody id="indirectCostsTableBody"></tbody></table>
 
-        function formatCurrency(n) {
-            if (typeof n !== 'number' || isNaN(n)) return '';
-            const c = document.getElementById('currency').value;
-            const symbol = c === 'PHP' ? '₱' : (c === 'USD' ? '$' : (c === 'EUR' ? '€' : '¥'));
-            return symbol + ' ' + formatNumber(n, 2);
-        }
+      <h4>Summary</h4>
+      <table class="table"><tbody id="summaryTableBody"></tbody></table>
 
-        function formatCurrencyForPDF(n) {
-            if (typeof n !== 'number' || isNaN(n)) return '';
-            const c = document.getElementById('currency').value;
-            const prefix = c === 'PHP' ? 'PHP ' : (c === 'USD' ? '$ ' : (c === 'EUR' ? 'EUR ' : 'JPY '));
-            return prefix + formatNumber(n, 2);
-        }
-        
-        // Functions
-        function updateUnitLabels() {
-            const lengthUnit = currentUnitSystem === 'metric' ? 'meters' : 'feet';
-            const lengthUnitShort = currentUnitSystem === 'metric' ? 'm' : 'ft';
-            const lengthUnits = document.querySelectorAll('.length-unit');
-            
-            lengthUnits.forEach(unit => {
-                unit.textContent = lengthUnit;
-            });
-            
-            // Update all length unit labels
-            document.querySelectorAll('.unit-label').forEach(label => {
-                if (label.textContent.includes('meter') || label.textContent.includes('m')) {
-                    label.innerHTML = label.innerHTML.replace(/meter[s]?|m/g, lengthUnitShort);
-                } else if (label.textContent.includes('feet') || label.textContent.includes('ft')) {
-                    label.innerHTML = label.innerHTML.replace(/feet|ft/g, lengthUnitShort);
-                }
-            });
-        }
-        
-        function updateStandards() {
-            // Update labor rates based on standards
-            const laborRateInput = document.getElementById('laborRate');
-            const currencySelect = document.getElementById('currency');
-            if (currentStandard === 'philippine') {
-                laborRateInput.value = '250'; // PHP average rate
-                document.getElementById('taxRate').value = '12'; // VAT in Philippines
-                currencySelect.value = 'PHP'; // Improvement: Sync currency
-            } else {
-                laborRateInput.value = '45'; // USD average rate
-                document.getElementById('taxRate').value = '0';
-                currencySelect.value = 'USD'; // Improvement: Sync currency
-            }
-        }
-        
-        function setupInputValidation() {
-            const numberInputs = document.querySelectorAll('input[type="number"]');
-            
-            numberInputs.forEach(input => {
-                input.addEventListener('blur', function() {
-                    if (this.value < 0) {
-                        this.value = 0;
-                    }
-                    
-                    if (this.hasAttribute('min') && this.value < this.getAttribute('min')) {
-                        this.value = this.getAttribute('min');
-                    }
-                });
-            });
-        }
-        
-        function validateInputs() {
-            let isValid = true;
-            const requiredInputs = document.querySelectorAll('input[type="number"]');
-            
-            requiredInputs.forEach(input => {
-                if (!input.value || isNaN(parseFloat(input.value))) {
-                    isValid = false;
-                    input.style.borderColor = 'var(--danger)';
-                } else {
-                    input.style.borderColor = '';
-                }
-            });
-            
-            if (!isValid) {
-                validationError.style.display = 'block';
-            } else {
-                validationError.style.display = 'none';
-            }
-            
-            return isValid;
-        }
-        
-        function calculateEstimate() {
-            if (!validateInputs()) {
-                return;
-            }
-            
-            // Get general parameters
-            const laborRate = parseFloat(document.getElementById('laborRate').value);
-            const overheadRate = parseFloat(document.getElementById('overheadRate').value) / 100;
-            const profitMarginRate = parseFloat(document.getElementById('profitMarginRate').value) / 100;
-            const currency = document.getElementById('currency').value;
-            const equipmentCost = parseFloat(document.getElementById('equipmentCost').value);
-            const permitsCost = parseFloat(document.getElementById('permitsCost').value);
-            const toolsCost = parseFloat(document.getElementById('toolsCost').value);
-            const contingencyRate = parseFloat(document.getElementById('contingencyRate').value) / 100;
-            const taxRate = parseFloat(document.getElementById('taxRate').value) / 100;
-            
-            // Calculate costs for each work item
-            const workItems = [
-                {
-                    name: 'Main Distribution Boards (MDBs)',
-                    quantity: parseFloat(document.getElementById('mdbQty').value),
-                    unit: 'pcs',
-                    unitCost: parseFloat(document.getElementById('mdbUnitCost').value),
-                    laborHours: parseFloat(document.getElementById('mdbLaborHours').value)
-                },
-                {
-                    name: 'Sub-Main Distribution Boards (SMDBs)',
-                    quantity: parseFloat(document.getElementById('smdbQty').value),
-                    unit: 'pcs',
-                    unitCost: parseFloat(document.getElementById('smdbUnitCost').value),
-                    laborHours: parseFloat(document.getElementById('smdbLaborHours').value)
-                },
-                {
-                    name: 'Distribution Panels',
-                    quantity: parseFloat(document.getElementById('panelQty').value),
-                    unit: 'pcs',
-                    unitCost: parseFloat(document.getElementById('panelUnitCost').value),
-                    laborHours: parseFloat(document.getElementById('panelLaborHours').value)
-                },
-                {
-                    name: 'Circuit Breakers',
-                    quantity: parseFloat(document.getElementById('breakerQty').value),
-                    unit: 'pcs',
-                    unitCost: parseFloat(document.getElementById('breakerUnitCost').value),
-                    laborHours: parseFloat(document.getElementById('breakerLaborHours').value)
-                },
-                {
-                    name: 'Power Cables',
-                    quantity: parseFloat(document.getElementById('cableLength').value),
-                    unit: currentUnitSystem === 'metric' ? 'meters' : 'feet',
-                    unitCost: parseFloat(document.getElementById('cableCostPerUnit').value),
-                    laborHours: parseFloat(document.getElementById('cableLaborHours').value) / 100
-                },
-                {
-                    name: 'Cable Trays/Conduits',
-                    quantity: parseFloat(document.getElementById('trayLength').value),
-                    unit: currentUnitSystem === 'metric' ? 'meters' : 'feet',
-                    unitCost: parseFloat(document.getElementById('trayCostPerUnit').value),
-                    laborHours: parseFloat(document.getElementById('trayLaborHours').value) / 100
-                },
-                {
-                    name: 'Bus Ducts',
-                    quantity: parseFloat(document.getElementById('busductLength').value),
-                    unit: currentUnitSystem === 'metric' ? 'meters' : 'feet',
-                    unitCost: parseFloat(document.getElementById('busductCostPerUnit').value),
-                    laborHours: parseFloat(document.getElementById('busductLaborHours').value) / 10
-                },
-                {
-                    name: 'Wiring Devices',
-                    quantity: parseFloat(document.getElementById('wiringDeviceQty').value),
-                    unit: 'pcs',
-                    unitCost: parseFloat(document.getElementById('wiringDeviceUnitCost').value),
-                    laborHours: parseFloat(document.getElementById('wiringDeviceLaborHours').value)
-                },
-                {
-                    name: 'Equipment Rental/Mobilization',
-                    quantity: 1,
-                    unit: 'lot',
-                    unitCost: equipmentCost,
-                    laborHours: 0
-                },
-                {
-                    name: 'Tools & Consumables',
-                    quantity: 1,
-                    unit: 'lot',
-                    unitCost: toolsCost,
-                    laborHours: 0
-                }
-            ];
-            
-            // Calculate totals
-            let totalMaterialCost = 0;
-            let totalLaborHours = 0;
-            let totalLaborCost = 0;
-            
-            workItems.forEach(item => {
-                item.materialCost = item.quantity * item.unitCost;
-                item.laborCost = item.quantity * item.laborHours * laborRate;
-                item.totalCost = item.materialCost + item.laborCost;
-                
-                totalMaterialCost += item.materialCost;
-                totalLaborHours += item.quantity * item.laborHours;
-                totalLaborCost += item.laborCost;
-            });
-            
-            // Calculate Direct Costs (Materials + Labor + Equipment + Tools)
-            const totalDirectCost = totalMaterialCost + totalLaborCost;
-            
-            // Calculate Indirect Costs (Overhead + Contingency)
-            const overheadCost = totalDirectCost * overheadRate;
-            const contingencyCost = totalDirectCost * contingencyRate;
-            
-            // Calculate Profit
-            const costBeforeProfit = totalDirectCost + overheadCost + contingencyCost + permitsCost;
-            const profit = costBeforeProfit * profitMarginRate;
-            
-            // Calculate Tax (VAT)
-            const totalBeforeTax = costBeforeProfit + profit;
-            const tax = totalBeforeTax * taxRate;
-            
-            // Final Price
-            const finalPrice = totalBeforeTax + tax;
-            
-            // Improvement: Calculate and store totalIndirectCost (includes overhead, contingency, permits, profit, tax for consistency)
-            const totalIndirectCost = overheadCost + contingencyCost + permitsCost + profit + tax;
-            
-            // Store results for export
-            projectData = {
-                projectName: document.getElementById('projectName').value || 'Unnamed Project',
-                projectLocation: document.getElementById('projectLocation').value,
-                projectDate: document.getElementById('projectDate').value,
-                timestamp: new Date().toISOString(),
-                unitSystem: currentUnitSystem,
-                standard: currentStandard,
-                currency: currency,
-                parameters: {
-                    laborRate,
-                    overheadRate: overheadRate * 100,
-                    profitMarginRate: profitMarginRate * 100,
-                    equipmentCost,
-                    permitsCost,
-                    toolsCost,
-                    contingencyRate: contingencyRate * 100,
-                    taxRate: taxRate * 100
-                },
-                workItems,
-                totals: {
-                    totalMaterialCost,
-                    totalLaborHours,
-                    totalLaborCost,
-                    totalDirectCost,
-                    overheadCost,
-                    contingencyCost,
-                    costBeforeProfit,
-                    profit,
-                    totalBeforeTax,
-                    tax,
-                    finalPrice,
-                    totalIndirectCost // Improvement: Added for exports
-                }
-            };
-            
-            // Display results
-            displayResults(workItems, totalDirectCost, overheadCost, contingencyCost, profit, tax, finalPrice, totalIndirectCost, totalLaborHours, currency);
-        }
-        
-        function displayResults(workItems, totalDirectCost, overheadCost, contingencyCost, profit, tax, finalPrice, totalIndirectCost, totalLaborHours, currency) {
-            // Update project info
-            document.getElementById('resultProjectName').textContent = 
-                document.getElementById('projectName').value || 'Unnamed Project';
-            document.getElementById('resultProjectLocation').textContent = 
-                document.getElementById('projectLocation').value || 'Not specified';
-            document.getElementById('resultProjectDate').textContent = 
-                document.getElementById('projectDate').value || 'Not specified';
-            document.getElementById('resultStandard').textContent = 
-                currentStandard === 'philippine' ? 'Philippine Electrical Code (PEC)' : 'International Electrotechnical Commission (IEC)';
-            
-            // Update Bill of Quantity table (direct costs)
-            const billOfQuantityTableBody = document.getElementById('billOfQuantityTableBody');
-            billOfQuantityTableBody.innerHTML = '';
-            
-            let itemNo = 1;
-            
-            // Add direct cost items
-            workItems.forEach(item => {
-                if (item.quantity > 0) {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td class="text-center">${itemNo++}</td>
-                        <td>${item.name}</td>
-                        <td class="text-center">${formatNumber(item.quantity)}</td>
-                        <td class="text-center">${item.unit}</td>
-                        <td class="text-right">${formatCurrency(item.materialCost)}</td>
-                        <td class="text-right">${formatCurrency(item.laborCost)}</td>
-                        <td class="text-right">${formatCurrency(item.totalCost)}</td>
-                    `;
-                    billOfQuantityTableBody.appendChild(row);
-                }
-            });
-            
-            // Add Total Direct Cost row
-            const totalDirectRow = document.createElement('tr');
-            totalDirectRow.className = 'total-row';
-            totalDirectRow.innerHTML = `
-                <td class="text-center"></td>
-                <td><strong>TOTAL DIRECT COST</strong></td>
-                <td class="text-center"></td>
-                <td class="text-center"></td>
-                <td class="text-right"><strong>${formatCurrency(projectData.totals.totalMaterialCost)}</strong></td>
-                <td class="text-right"><strong>${formatCurrency(projectData.totals.totalLaborCost)}</strong></td>
-                <td class="text-right"><strong>${formatCurrency(projectData.totals.totalDirectCost)}</strong></td>
-            `;
-            billOfQuantityTableBody.appendChild(totalDirectRow);
-            
-            // Improvement: Merged permits into indirect costs table; no separate "Other Costs"
-            const indirectCostsTableBody = document.getElementById('indirectCostsTableBody');
-            indirectCostsTableBody.innerHTML = '';
-            
-            // Permits & Fees
-            const permitsRow = document.createElement('tr');
-            permitsRow.innerHTML = `
-                <td class="text-center">${itemNo++}</td>
-                <td>Permits & Fees</td>
-                <td class="text-center">1</td>
-                <td class="text-center">lot</td>
-                <td class="text-right">${formatCurrency(projectData.parameters.permitsCost)}</td>
-                <td class="text-right">-</td>
-                <td class="text-right">${formatCurrency(projectData.parameters.permitsCost)}</td>
-            `;
-            indirectCostsTableBody.appendChild(permitsRow);
-            
-            // Overhead
-            const overheadRow = document.createElement('tr');
-            overheadRow.innerHTML = `
-                <td class="text-center">${itemNo++}</td>
-                <td>Overhead (${projectData.parameters.overheadRate}%)</td>
-                <td class="text-center">1</td>
-                <td class="text-center">lot</td>
-                <td class="text-right">${formatCurrency(overheadCost)}</td>
-                <td class="text-right">-</td>
-                <td class="text-right">${formatCurrency(overheadCost)}</td>
-            `;
-            indirectCostsTableBody.appendChild(overheadRow);
-            
-            // Contingency
-            const contingencyRow = document.createElement('tr');
-            contingencyRow.innerHTML = `
-                <td class="text-center">${itemNo++}</td>
-                <td>Contingency (${projectData.parameters.contingencyRate}%)</td>
-                <td class="text-center">1</td>
-                <td class="text-center">lot</td>
-                <td class="text-right">${formatCurrency(contingencyCost)}</td>
-                <td class="text-right">-</td>
-                <td class="text-right">${formatCurrency(contingencyCost)}</td>
-            `;
-            indirectCostsTableBody.appendChild(contingencyRow);
-            
-            // Profit Margin
-            const profitRow = document.createElement('tr');
-            profitRow.innerHTML = `
-                <td class="text-center">${itemNo++}</td>
-                <td>Profit Margin (${projectData.parameters.profitMarginRate}%)</td>
-                <td class="text-center">1</td>
-                <td class="text-center">lot</td>
-                <td class="text-right">${formatCurrency(profit)}</td>
-                <td class="text-right">-</td>
-                <td class="text-right">${formatCurrency(profit)}</td>
-            `;
-            indirectCostsTableBody.appendChild(profitRow);
-            
-            // VAT
-            const vatRow = document.createElement('tr');
-            vatRow.innerHTML = `
-                <td class="text-center">${itemNo++}</td>
-                <td>VAT (${projectData.parameters.taxRate}%)</td>
-                <td class="text-center">1</td>
-                <td class="text-center">lot</td>
-                <td class="text-right">${formatCurrency(tax)}</td>
-                <td class="text-right">-</td>
-                <td class="text-right">${formatCurrency(tax)}</td>
-            `;
-            indirectCostsTableBody.appendChild(vatRow);
-            
-            // Add Total Indirect Cost row
-            const totalIndirectRow = document.createElement('tr');
-            totalIndirectRow.className = 'total-row';
-            totalIndirectRow.innerHTML = `
-                <td class="text-center"></td>
-                <td><strong>TOTAL INDIRECT COST</strong></td>
-                <td class="text-center"></td>
-                <td class="text-center"></td>
-                <td class="text-right"><strong>${formatCurrency(totalIndirectCost)}</strong></td>
-                <td class="text-right"><strong>-</strong></td>
-                <td class="text-right"><strong>${formatCurrency(totalIndirectCost)}</strong></td>
-            `;
-            indirectCostsTableBody.appendChild(totalIndirectRow);
-            
-            // Improvement: Updated Summary table to simpler structure (Category + Total Cost) with subtotals
-            const summaryTableBody = document.getElementById('summaryTableBody');
-            summaryTableBody.innerHTML = '';
-            
-            // Total Direct Cost
-            const directRow = document.createElement('tr');
-            directRow.innerHTML = `
-                <td>Total Direct Cost (Materials + Labor)</td>
-                <td class="text-right">${formatCurrency(projectData.totals.totalDirectCost)}</td>
-            `;
-            summaryTableBody.appendChild(directRow);
-            
-            // Subtotal before indirect
-            const subtotalRow = document.createElement('tr');
-            subtotalRow.innerHTML = `
-                <td><em>Subtotal (Direct)</em></td>
-                <td class="text-right"><em>${formatCurrency(projectData.totals.totalDirectCost)}</em></td>
-            `;
-            summaryTableBody.appendChild(subtotalRow);
-            
-            // Total Indirect Cost
-            const indirectRow = document.createElement('tr');
-            indirectRow.innerHTML = `
-                <td>Total Indirect Cost (Overhead + Contingency + Permits + Profit + VAT)</td>
-                <td class="text-right">${formatCurrency(totalIndirectCost)}</td>
-            `;
-            summaryTableBody.appendChild(indirectRow);
-            
-            // Final Price
-            const finalRow = document.createElement('tr');
-            finalRow.className = 'total-row';
-            finalRow.innerHTML = `
-                <td><strong>FINAL PRICE</strong></td>
-                <td class="text-right"><strong>${formatCurrency(finalPrice)}</strong></td>
-            `;
-            summaryTableBody.appendChild(finalRow);
-            
-            // Show results
-            resultsPlaceholder.classList.add('hidden');
-            resultsContent.classList.remove('hidden');
-        }
-        
-        function saveProject() {
-            // Collect all input data
-            const inputs = document.querySelectorAll('input, select');
-            const projectData = {
-                projectName: document.getElementById('projectName').value,
-                projectLocation: document.getElementById('projectLocation').value,
-                projectDate: document.getElementById('projectDate').value,
-                unitSystem: currentUnitSystem,
-                standard: currentStandard,
-                currency: document.getElementById('currency').value,
-                timestamp: new Date().toISOString(),
-                inputs: {}
-            };
-            
-            inputs.forEach(input => {
-                if (input.id) {
-                    projectData.inputs[input.id] = input.value;
-                }
-            });
-            
-            // Create and download JSON file
-            const dataStr = JSON.stringify(projectData, null, 2);
-            const dataBlob = new Blob([dataStr], {type: 'application/json'});
-            
-            const url = URL.createObjectURL(dataBlob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `power-distribution-estimate-${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        }
-        
-        function loadProject(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const projectData = JSON.parse(e.target.result);
-                    
-                    // Restore unit system
-                    if (projectData.unitSystem) {
-                        unitButtons.forEach(btn => btn.classList.remove('active'));
-                        document.querySelector(`.unit-btn[data-unit="${projectData.unitSystem}"]`).classList.add('active');
-                        currentUnitSystem = projectData.unitSystem;
-                        updateUnitLabels();
-                    }
-                    
-                    // Restore standard
-                    if (projectData.standard) {
-                        standardButtons.forEach(btn => btn.classList.remove('active'));
-                        document.querySelector(`.standard-btn[data-standard="${projectData.standard}"]`).classList.add('active');
-                        currentStandard = projectData.standard;
-                        updateStandards();
-                    }
-                    
-                    // Restore currency
-                    if (projectData.currency) {
-                        document.getElementById('currency').value = projectData.currency;
-                    }
-                    
-                    // Restore inputs
-                    if (projectData.inputs) {
-                        for (const [id, value] of Object.entries(projectData.inputs)) {
-                            const element = document.getElementById(id);
-                            if (element) {
-                                element.value = value;
-                            }
-                        }
-                    }
-                    
-                    // Restore project info
-                    if (projectData.projectName) {
-                        document.getElementById('projectName').value = projectData.projectName;
-                    }
-                    if (projectData.projectLocation) {
-                        document.getElementById('projectLocation').value = projectData.projectLocation;
-                    }
-                    if (projectData.projectDate) {
-                        document.getElementById('projectDate').value = projectData.projectDate;
-                    }
-                    
-                    // Recalculate if there are results
-                    if (projectData.totals) {
-                        calculateEstimate();
-                    }
-                    
-                    // Reset file input
-                    event.target.value = '';
-                    
-                } catch (error) {
-                    alert('Error loading project file: ' + error.message);
-                }
-            };
-            reader.readAsText(file);
-        }
-        
-        function resetCalculator() {
-            if (confirm('Are you sure you want to reset all inputs? This cannot be undone.')) {
-                document.querySelectorAll('input').forEach(input => {
-                    if (input.type === 'number') {
-                        input.value = input.defaultValue || '0';
-                    } else if (input.type === 'text') {
-                        input.value = '';
-                    } else if (input.type === 'date') {
-                        input.valueAsDate = new Date();
-                    }
-                });
-                
-                document.querySelectorAll('select').forEach(select => {
-                    select.selectedIndex = 0;
-                });
-                
-                // Reset toggles
-                unitButtons.forEach(btn => btn.classList.remove('active'));
-                document.querySelector('.unit-btn[data-unit="metric"]').classList.add('active');
-                currentUnitSystem = 'metric';
-                
-                standardButtons.forEach(btn => btn.classList.remove('active'));
-                document.querySelector('.standard-btn[data-standard="philippine"]').classList.add('active');
-                currentStandard = 'philippine';
-                
-                updateUnitLabels();
-                updateStandards();
-                
-                resultsPlaceholder.classList.remove('hidden');
-                resultsContent.classList.add('hidden');
-                validationError.style.display = 'none';
-            }
-        }
-        
-        function exportToPdf() {
-            if (!projectData.totals) {
-                alert('No results to export. Please calculate an estimate first.');
-                return;
-            }
-            
-            try {
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-                
-                // Track page numbers manually
-                let currentPage = 1;
-                
-                // Function to add page number to current page
-                function addPageNumber() {
-                    const pageSize = doc.internal.pageSize;
-                    doc.setFont('helvetica');
-                    doc.setFontSize(9);
-                    doc.setTextColor(120);
-                    doc.text(`Page ${currentPage}`, pageSize.width - 60, pageSize.height - 30);
-                }
+      <h4>Labor Requirements</h4>
+      <table class="table"><tbody id="laborTableBody"></tbody></table>
 
-                // Set consistent font family and size for entire document
-                doc.setFont('helvetica');
-                doc.setFontSize(10);
+      <div class="export-options">
+        <button id="saveResultsBtn" class="btn btn-success">Save Results (JSON)</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-                const leftMargin = 40;
-                const topMargin = 40;
-                const bottomLimit = doc.internal.pageSize.getHeight() - 60;
-                let y = topMargin;
+<script>
+let projectData = {};
 
-                function newPageIfNeeded(linesNeeded = 60) {
-                    if (y + linesNeeded > bottomLimit) {
-                        addPageNumber();
-                        doc.addPage();
-                        currentPage++;
-                        y = topMargin;
-                        doc.setFont('helvetica');
-                        doc.setFontSize(10);
-                    }
-                }
+function safeNumber(v,f=0){const n=Number(v);return isNaN(n)?f:n;}
+function formatNumber(n,d=2){return n.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d});}
+function formatCurrency(n){if(typeof n!=="number"||isNaN(n))return"";return "₱ "+formatNumber(n,2);}
+function formatCurrencyForPDF(n){if(typeof n!=="number"||isNaN(n))return"";return "PHP "+formatNumber(n,2);}
 
-                // H1: POWER DISTRIBUTION SYSTEMS ESTIMATE - Bold, Font 16
-                doc.setFontSize(16);
-                doc.setFont('helvetica', 'bold');
-                doc.text("POWER DISTRIBUTION SYSTEMS ESTIMATE", leftMargin, y);
-                y += 25;
+function calculateEstimate(){
+  const laborRate=safeNumber(document.getElementById("laborRate").value);
+  const taxRate=safeNumber(document.getElementById("taxRate").value)/100;
+  const equipmentCost=safeNumber(document.getElementById("equipmentCost").value);
+  const toolsCost=safeNumber(document.getElementById("toolsCost").value);
+  const permitsCost=safeNumber(document.getElementById("permitsCost").value);
 
-                // Project Info (H5 - normal text, Font 10)
-                doc.setFontSize(10);
-                doc.setFont('helvetica', 'normal');
-                const projectName = document.getElementById('projectName').value || '';
-                const projectLocation = document.getElementById('projectLocation').value || '';
-                const dateStr = projectData.projectDate || new Date().toLocaleDateString(); // Improvement: Use project date if set
+  const workItems=[
+    {name:"MDBs",qty:safeNumber(mdbQty.value),unit:"pcs",cost:10000,hours:8},
+    {name:"SMDBs",qty:safeNumber(smdbQty.value),unit:"pcs",cost:8000,hours:6},
+    {name:"Panels",qty:safeNumber(panelQty.value),unit:"pcs",cost:5000,hours:5},
+    {name:"Breakers",qty:safeNumber(breakerQty.value),unit:"pcs",cost:2000,hours:2},
+    {name:"Cables",qty:safeNumber(cableLength.value),unit:"m",cost:150,hours:0.05},
+    {name:"Cable Trays",qty:safeNumber(trayLength.value),unit:"m",cost:200,hours:0.1},
+    {name:"Wiring Devices",qty:safeNumber(wiringDeviceQty.value),unit:"pcs",cost:100,hours:0.25}
+  ];
 
-                doc.text(`Project: ${projectName}`, leftMargin, y);
-                doc.text(`Location: ${projectLocation}`, 380, y);
-                y += 14;
-                doc.text(`Date: ${dateStr}`, leftMargin, y);
-                doc.text(`Standard: ${projectData.standard === 'philippine' ? 'PEC' : 'IEC'}`, 380, y);
-                y += 14;
-                doc.text(`Unit System: ${projectData.unitSystem.toUpperCase()}`, leftMargin, y);
-                y += 25;
+  let matTotal=0,labTotal=0,manHours=0;
+  workItems.forEach(it=>{
+    it.matCost=it.qty*it.cost;
+    it.labCost=it.qty*it.hours*laborRate;
+    it.total=it.matCost+it.labCost;
+    matTotal+=it.matCost;labTotal+=it.labCost;manHours+=it.qty*it.hours;
+  });
 
-                // H3: Cost Summary - Bold, Font 12
-                doc.setFontSize(12);
-                doc.setFont('helvetica', 'bold');
-                doc.text("COST SUMMARY", leftMargin, y);
-                y += 8;
+  const direct=matTotal+labTotal+equipmentCost+toolsCost+permitsCost;
+  const profit=direct*0.25;
+  const beforeTax=direct+profit;
+  const tax=beforeTax*taxRate;
+  const grandTotal=beforeTax+tax;
 
-                // Cost Summary (H5 - normal text, Font 10)
-                doc.setFontSize(10);
-                doc.setFont('helvetica', 'normal');
-                let yPos = y;
-                doc.text(`Direct Costs: ${formatCurrencyForPDF(projectData.totals.totalDirectCost)}`, leftMargin, yPos);
-                yPos += 14;
-                doc.text(`Indirect Costs: ${formatCurrencyForPDF(projectData.totals.totalIndirectCost)}`, leftMargin, yPos); // Improvement: Use stored totalIndirectCost
-                yPos += 14;
-                doc.text(`Profit Margin: ${formatCurrencyForPDF(projectData.totals.profit)}`, leftMargin, yPos);
-                yPos += 14;
-                doc.text(`Total Before VAT: ${formatCurrencyForPDF(projectData.totals.totalBeforeTax)}`, leftMargin, yPos);
-                yPos += 14;
-                doc.text(`VAT (${projectData.parameters.taxRate}%): ${formatCurrencyForPDF(projectData.totals.tax)}`, leftMargin, yPos);
-                yPos += 20;
-                doc.setFontSize(12);
-                doc.setFont('helvetica', 'bold');
-                doc.text(`FINAL PRICE: ${formatCurrencyForPDF(projectData.totals.finalPrice)}`, leftMargin, yPos);
-                
-                y = yPos + 30;
+  projectData={projectName:projectName.value,client:clientName.value,location:projectLocation.value,preparedBy:preparedBy.value,date:new Date().toLocaleDateString(),
+    workItems,matTotal,labTotal,direct,profit,tax,grandTotal,manHours};
 
-                // H3: Bill of Quantities - Bold, Font 12
-                doc.setFontSize(12);
-                doc.setFont('helvetica', 'bold');
-                doc.text('BILL OF QUANTITIES', leftMargin, y);
-                
-                // Prepare table data
-                const tableColumns = [
-                    'Item No.',
-                    'Scope of Work',
-                    'Qty', 
-                    'Unit',
-                    'Material Cost',
-                    'Labor Cost', 
-                    'Total'
-                ];
-                
-                const tableRows = [];
-                
-                // Table content (H5 - normal text, Font 10)
-                let itemNo = 1;
-                
-                // DIRECT COSTS SECTION
-                tableRows.push(['DIRECT COSTS', '', '', '', '', '', '']);
-                
-                // Materials
-                projectData.workItems.forEach(item => {
-                    if (item.quantity > 0) {
-                        tableRows.push([
-                            itemNo++,
-                            item.name,
-                            formatNumber(item.quantity),
-                            item.unit,
-                            formatCurrencyForPDF(item.materialCost),
-                            formatCurrencyForPDF(item.laborCost),
-                            formatCurrencyForPDF(item.totalCost)
-                        ]);
-                    }
-                });
-                
-                // Add Direct Cost Total
-                tableRows.push([
-                    '',
-                    'TOTAL DIRECT COSTS',
-                    '',
-                    '',
-                    formatCurrencyForPDF(projectData.totals.totalMaterialCost),
-                    formatCurrencyForPDF(projectData.totals.totalLaborCost),
-                    formatCurrencyForPDF(projectData.totals.totalDirectCost)
-                ]);
-                
-                // INDIRECT COSTS SECTION - Improvement: Included permits here
-                tableRows.push(['INDIRECT COSTS', '', '', '', '', '', '']);
-                
-                // Permits & Fees
-                tableRows.push([
-                    itemNo++,
-                    'Permits & Fees',
-                    '',
-                    '',
-                    formatCurrencyForPDF(projectData.parameters.permitsCost),
-                    '',
-                    formatCurrencyForPDF(projectData.parameters.permitsCost)
-                ]);
-                
-                // Overhead
-                tableRows.push([
-                    itemNo++,
-                    'Overhead',
-                    '',
-                    '',
-                    formatCurrencyForPDF(projectData.totals.overheadCost),
-                    '',
-                    formatCurrencyForPDF(projectData.totals.overheadCost)
-                ]);
-                
-                // Contingency
-                tableRows.push([
-                    itemNo++,
-                    'Contingency',
-                    '',
-                    '',
-                    formatCurrencyForPDF(projectData.totals.contingencyCost),
-                    '',
-                    formatCurrencyForPDF(projectData.totals.contingencyCost)
-                ]);
-                
-                // Profit Margin
-                tableRows.push([
-                    itemNo++,
-                    'Profit Margin',
-                    '',
-                    '',
-                    formatCurrencyForPDF(projectData.totals.profit),
-                    '',
-                    formatCurrencyForPDF(projectData.totals.profit)
-                ]);
-                
-                // VAT Tax
-                tableRows.push([
-                    itemNo++,
-                    'VAT Tax',
-                    '',
-                    '',
-                    formatCurrencyForPDF(projectData.totals.tax),
-                    '',
-                    formatCurrencyForPDF(projectData.totals.tax)
-                ]);
-                
-                // Add Indirect Cost Total
-                tableRows.push([
-                    '',
-                    'TOTAL INDIRECT COSTS',
-                    '',
-                    '',
-                    formatCurrencyForPDF(projectData.totals.totalIndirectCost),
-                    '',
-                    formatCurrencyForPDF(projectData.totals.totalIndirectCost)
-                ]);
-                
-                // FINAL PRICE
-                tableRows.push([
-                    '',
-                    'FINAL PRICE',
-                    '',
-                    '',
-                    '',
-                    '',
-                    formatCurrencyForPDF(projectData.totals.finalPrice)
-                ]);
-                
-                // Create table with proper styling
-                doc.autoTable({
-                    startY: y + 10,
-                    head: [tableColumns],
-                    body: tableRows,
-                    theme: 'grid',
-                    styles: { 
-                        font: 'helvetica', 
-                        fontSize: 10,
-                        cellPadding: 6,
-                        fontStyle: 'normal'
-                    },
-                    headStyles: { 
-                        fillColor: [44, 62, 80],
-                        textColor: 255,
-                        fontStyle: 'bold',
-                        fontSize: 10,
-                        font: 'helvetica'
-                    },
-                    bodyStyles: {
-                        font: 'helvetica',
-                        fontStyle: 'normal',
-                        fontSize: 10
-                    },
-                    columnStyles: {
-                        0: { cellWidth: 40, halign: 'center', font: 'helvetica', fontSize: 10 },
-                        1: { cellWidth: 180, halign: 'left', font: 'helvetica', fontSize: 10 },
-                        2: { cellWidth: 40, halign: 'center', font: 'helvetica', fontSize: 10 },
-                        3: { cellWidth: 40, halign: 'center', font: 'helvetica', fontSize: 10 },
-                        4: { cellWidth: 70, halign: 'right', font: 'helvetica', fontSize: 10 },
-                        5: { cellWidth: 70, halign: 'right', font: 'helvetica', fontSize: 10 },
-                        6: { cellWidth: 70, halign: 'right', font: 'helvetica', fontSize: 10 }
-                    },
-                    didParseCell: function(data) {
-                        const txt = (data.cell.raw||'').toString();
-                        
-                        // H4: Make all header cells bold
-                        if (data.section === 'head') {
-                            data.cell.styles.fontStyle = 'bold';
-                            data.cell.styles.fontSize = 10;
-                        }
-                        
-                        // H4: Section headers - Bold
-                        if(txt.includes("DIRECT COSTS") || txt.includes("INDIRECT COSTS")){
-                            data.cell.styles.fontStyle = 'bold';
-                            data.cell.styles.fillColor = [220, 220, 220];
-                            data.cell.styles.fontSize = 10;
-                        }
-                        
-                        // H4: Summary rows - Bold
-                        if(txt.includes("TOTAL DIRECT COSTS") || txt.includes("TOTAL INDIRECT COSTS") || txt.includes("FINAL PRICE")){
-                            data.cell.styles.fontStyle = 'bold';
-                            data.cell.styles.fillColor = [240, 240, 240];
-                            data.cell.styles.fontSize = 10;
-                        }
-                    },
-                    didDrawPage: function(data) {
-                        currentPage = data.pageNumber;
-                        addPageNumber();
-                    }
-                });
+  displayResults();
+}
 
-                // Add page number to the final page
-                addPageNumber();
+function displayResults(){
+  resultProjectName.textContent=projectData.projectName;
+  resultClientName.textContent=projectData.client;
+  resultProjectLocation.textContent=projectData.location;
+  resultProjectDate.textContent=projectData.date;
+  resultPreparedBy.textContent=projectData.preparedBy;
+  resultStandard.textContent="PEC";
 
-                // Save PDF
-                const safeName = (document.getElementById('projectName').value||'project').replace(/[^a-z0-9]/gi,'_');
-                doc.save(`${safeName}_power_distribution_estimate.pdf`);
-                
-            } catch (err) {
-                console.error(err);
-                alert('Error generating PDF: ' + err.message);
-            }
-        }
-        
-        function exportToExcel() {
-            if (!projectData.totals) {
-                alert('No results to export. Please calculate an estimate first.');
-                return;
-            }
-            
-            try {
-                // Create workbook
-                const wb = XLSX.utils.book_new();
-                
-                // Project Summary Sheet - Improvement: Use stored totalIndirectCost
-                const summaryData = [
-                    ['POWER DISTRIBUTION SYSTEMS ESTIMATE'],
-                    [],
-                    ['Project Information'],
-                    ['Project Name', projectData.projectName],
-                    ['Location', projectData.projectLocation || 'Not specified'],
-                    ['Date', projectData.projectDate || 'Not specified'],
-                    ['Standard', projectData.standard === 'philippine' ? 'Philippine Electrical Code (PEC)' : 'International Electrotechnical Commission (IEC)'],
-                    ['Unit System', projectData.unitSystem.toUpperCase()],
-                    ['Currency', projectData.currency],
-                    [],
-                    ['COST SUMMARY'],
-                    ['Direct Costs', projectData.totals.totalDirectCost],
-                    ['- Materials', projectData.totals.totalMaterialCost],
-                    ['- Labor', projectData.totals.totalLaborCost],
-                    ['- Equipment & Rental', projectData.parameters.equipmentCost],
-                    ['- Tools & Consumables', projectData.parameters.toolsCost],
-                    ['- Permits & Fees', projectData.parameters.permitsCost],
-                    [],
-                    ['Indirect Costs', projectData.totals.totalIndirectCost],
-                    ['- Overhead', projectData.totals.overheadCost],
-                    ['- Contingency', projectData.totals.contingencyCost],
-                    [],
-                    ['Profit Margin', projectData.totals.profit],
-                    ['Total Before VAT', projectData.totals.totalBeforeTax],
-                    [`VAT (${projectData.parameters.taxRate}%)`, projectData.totals.tax],
-                    ['FINAL PRICE', projectData.totals.finalPrice]
-                ];
-                
-                const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-                XLSX.utils.book_append_sheet(wb, wsSummary, 'Project Summary');
-                
-                // Bill of Quantities Sheet - Improvement: Included permits in indirect section
-                const breakdownData = [
-                    ['BILL OF QUANTITIES'],
-                    [],
-                    ['Item No.', 'Scope of Work', 'Quantity', 'Unit', 'Material Cost', 'Labor Cost', 'Total Cost']
-                ];
-                
-                let itemNo = 1;
-                
-                // DIRECT COSTS SECTION
-                breakdownData.push(['DIRECT COSTS', '', '', '', '', '', '']);
-                
-                // Materials
-                projectData.workItems.forEach(item => {
-                    if (item.quantity > 0) {
-                        breakdownData.push([
-                            itemNo++,
-                            item.name,
-                            item.quantity,
-                            item.unit,
-                            item.materialCost,
-                            item.laborCost,
-                            item.totalCost
-                        ]);
-                    }
-                });
-                
-                // Add Direct Cost Total
-                breakdownData.push([
-                    '',
-                    'TOTAL DIRECT COSTS',
-                    '',
-                    '',
-                    projectData.totals.totalMaterialCost,
-                    projectData.totals.totalLaborCost,
-                    projectData.totals.totalDirectCost
-                ]);
-                
-                // INDIRECT COSTS SECTION
-                breakdownData.push(['INDIRECT COSTS', '', '', '', '', '', '']);
-                
-                // Permits & Fees
-                breakdownData.push([
-                    itemNo++,
-                    'Permits & Fees',
-                    '',
-                    '',
-                    projectData.parameters.permitsCost,
-                    '',
-                    projectData.parameters.permitsCost
-                ]);
-                
-                // Overhead
-                breakdownData.push([
-                    itemNo++,
-                    'Overhead',
-                    '',
-                    '',
-                    projectData.totals.overheadCost,
-                    '',
-                    projectData.totals.overheadCost
-                ]);
-                
-                // Contingency
-                breakdownData.push([
-                    itemNo++,
-                    'Contingency',
-                    '',
-                    '',
-                    projectData.totals.contingencyCost,
-                    '',
-                    projectData.totals.contingencyCost
-                ]);
-                
-                // Profit Margin
-                breakdownData.push([
-                    itemNo++,
-                    'Profit Margin',
-                    '',
-                    '',
-                    projectData.totals.profit,
-                    '',
-                    projectData.totals.profit
-                ]);
-                
-                // VAT Tax
-                breakdownData.push([
-                    itemNo++,
-                    'VAT Tax',
-                    '',
-                    '',
-                    projectData.totals.tax,
-                    '',
-                    projectData.totals.tax
-                ]);
-                
-                // Add Indirect Cost Total
-                breakdownData.push([
-                    '',
-                    'TOTAL INDIRECT COSTS',
-                    '',
-                    '',
-                    projectData.totals.totalIndirectCost,
-                    '',
-                    projectData.totals.totalIndirectCost
-                ]);
-                
-                // FINAL PRICE
-                breakdownData.push([
-                    '',
-                    'FINAL PRICE',
-                    '',
-                    '',
-                    '',
-                    '',
-                    projectData.totals.finalPrice
-                ]);
-                
-                const wsBreakdown = XLSX.utils.aoa_to_sheet(breakdownData);
-                XLSX.utils.book_append_sheet(wb, wsBreakdown, 'Bill of Quantities');
-                
-                // Save Excel file
-                XLSX.writeFile(wb, `power-distribution-estimate-${projectData.projectName || 'project'}-${new Date().toISOString().split('T')[0]}.xlsx`);
-                
-            } catch (err) {
-                console.error(err);
-                alert('Error generating Excel file: ' + err.message);
-            }
-        }
-        
-        function saveResultsAsJson() {
-            if (!projectData.totals) {
-                alert('No results to save. Please calculate an estimate first.');
-                return;
-            }
-            
-            const dataStr = JSON.stringify(projectData, null, 2);
-            const dataBlob = new Blob([dataStr], {type: 'application/json'});
-            
-            const url = URL.createObjectURL(dataBlob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `power-distribution-estimate-results-${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        }
-    </script>
+  const tbody=billOfQuantityTableBody;tbody.innerHTML="";
+  let no=1;
+  projectData.workItems.forEach(it=>{
+    if(it.qty>0){
+      tbody.insertAdjacentHTML("beforeend",
+      `<tr><td>${no++}</td><td>${it.name}</td><td>${it.qty}</td><td>${it.unit}</td><td class="text-right">${formatCurrency(it.matCost)}</td><td class="text-right">${formatCurrency(it.labCost)}</td><td class="text-right">${formatCurrency(it.total)}</td></tr>`);
+    }
+  });
+
+  indirectCostsTableBody.innerHTML=`<tr><td>1</td><td>Profit</td><td>1</td><td>lot</td><td class="text-right">${formatCurrency(projectData.profit)}</td><td>-</td><td class="text-right">${formatCurrency(projectData.profit)}</td></tr>
+    <tr><td>2</td><td>VAT</td><td>1</td><td>lot</td><td class="text-right">${formatCurrency(projectData.tax)}</td><td>-</td><td class="text-right">${formatCurrency(projectData.tax)}</td></tr>`;
+
+  summaryTableBody.innerHTML=`<tr><td>Materials</td><td class="text-right">${formatCurrency(projectData.matTotal)}</td><td>-</td><td class="text-right">${formatCurrency(projectData.matTotal)}</td></tr>
+    <tr><td>Labor</td><td>-</td><td class="text-right">${formatCurrency(projectData.labTotal)}</td><td class="text-right">${formatCurrency(projectData.labTotal)}</td></tr>
+    <tr><td>Direct Costs</td><td colspan="2"></td><td class="text-right">${formatCurrency(projectData.direct)}</td></tr>
+    <tr><td>Profit</td><td colspan="2"></td><td class="text-right">${formatCurrency(projectData.profit)}</td></tr>
+    <tr><td>VAT</td><td colspan="2"></td><td class="text-right">${formatCurrency(projectData.tax)}</td></tr>
+    <tr class="total-row"><td><b>GRAND TOTAL</b></td><td colspan="2"></td><td class="text-right"><b>${formatCurrency(projectData.grandTotal)}</b></td></tr>`;
+
+  laborTableBody.innerHTML=`<tr><td>Man-Hours</td><td class="text-center">-</td><td class="text-center">-</td><td class="text-center">${formatNumber(projectData.manHours,2)}</td></tr>`;
+
+  resultsPlaceholder.classList.add("hidden");
+  resultsContent.classList.remove("hidden");
+}
+
+document.getElementById("calculateBtn").addEventListener("click",calculateEstimate);
+document.getElementById("exportPdfBtn").addEventListener("click",()=>{const {jsPDF}=window.jspdf;const doc=new jsPDF();doc.text("Project: "+projectData.projectName,20,20);doc.text("Grand Total: "+formatCurrencyForPDF(projectData.grandTotal),20,40);doc.save("report.pdf");});
+document.getElementById("exportExcelBtn").addEventListener("click",()=>{const wb=XLSX.utils.book_new();const data=[["Project",projectData.projectName],["Client",projectData.client],["Grand Total",projectData.grandTotal]];const ws=XLSX.utils.aoa_to_sheet(data);XLSX.utils.book_append_sheet(wb,ws,"Summary");XLSX.writeFile(wb,"report.xlsx");});
+document.getElementById("saveResultsBtn").addEventListener("click",()=>{const dataStr=JSON.stringify(projectData,null,2);const blob=new Blob([dataStr],{type:"application/json"});const link=document.createElement("a");link.href=URL.createObjectURL(blob);link.download="results.json";link.click();});
+</script>
 </body>
 </html>
