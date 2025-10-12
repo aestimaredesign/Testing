@@ -3707,315 +3707,279 @@ function resetCalculator() {
 }
 
 function exportToPdf() {
-    if (!projectData.totals) {
-        alert('No results to export. Please calculate an estimate first.');
-        return;
+  if (!projectData.totals) {
+    alert('No results to export. Please calculate an estimate first.');
+    return;
+  }
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    // Track page numbers
+    let currentPage = 1;
+    let totalPages = 1;
+
+    // Function to add page number
+    function addPageNumber() {
+      const pageSize = doc.internal.pageSize;
+      doc.setFont('helvetica');
+      doc.setFontSize(9);
+      doc.setTextColor(120);
+      doc.text(`Page ${currentPage} of ${totalPages}`, pageSize.width - 60, pageSize.height - 30);
     }
 
-    try {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF({
-            orientation: 'portrait',
-            unit: 'mm',
-            format: 'a4'
-        });
+    // Set consistent font family and size for entire document
+    doc.setFont('helvetica');
+    doc.setFontSize(10);
 
-        // Track page numbers
-        let currentPage = 1;
-        let totalPages = 1;
+    const leftMargin = 20;
+    const topMargin = 30;
+    let y = topMargin;
 
-        // Function to add page number
-        function addPageNumber() {
-            const pageSize = doc.internal.pageSize;
-            doc.setFont('helvetica');
-            doc.setFontSize(9);
-            doc.setTextColor(120);
-            doc.text(`Page ${currentPage} of ${totalPages}`, pageSize.width - 25, pageSize.height - 10);
+    // H1: POWER DISTRIBUTION SYSTEMS ESTIMATE - Bold, Font 16
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text("POWER DISTRIBUTION SYSTEMS ESTIMATE", leftMargin, y);
+    y += 20;
+
+    // Project Info (H5 - normal text, Font 10)
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    const projectName = document.getElementById('projectName').value || "";
+    const clientName = document.getElementById('clientName').value || "";
+    const projectLocation = document.getElementById('projectLocation').value || "";
+    const preparedBy = document.getElementById('preparedBy').value || "";
+    const dateStr = new Date().toLocaleDateString();
+
+    doc.text(`Project: ${projectName}`, leftMargin, y);
+    doc.text(`Client: ${clientName}`, 110, y);
+    y += 12;
+    doc.text(`Location: ${projectLocation}`, leftMargin, y);
+    doc.text(`Prepared By: ${preparedBy}`, 110, y);
+    y += 12;
+    doc.text(`Date: ${dateStr}`, leftMargin, y);
+    doc.text(`Standard: ${projectData.standard === 'philippine' ? 'PEC' : 'IEC'}`, 110, y);
+    y += 12;
+    doc.text(`Unit System: ${projectData.unitSystem.toUpperCase()}`, leftMargin, y);
+    y += 20;
+
+    // H3: Bill of Quantities - Bold, Font 12
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('BILL OF QUANTITIES', leftMargin, y);
+    y += 15;
+
+    // Prepare combined table data
+    const boqColumns = ['Item No.', 'Scope of Work', 'Qty', 'Unit', 'Material Cost'];
+
+    const boqRows = [];
+    let itemNo = 1;
+
+    // Direct Costs items (material only)
+    projectData.workItems.forEach(item => {
+      if (item.quantity > 0) {
+        boqRows.push([
+          itemNo++,
+          item.name,
+          formatNumber(item.quantity),
+          item.unit,
+          formatCurrencyForPDF(item.materialCost)
+        ]);
+      }
+    });
+
+    // Indirect Costs & Markup items
+    boqRows.push([
+      itemNo++,
+      'Permits & Fees',
+      '1',
+      'lot',
+      formatCurrencyForPDF(projectData.parameters.permitsCost)
+    ]);
+
+    boqRows.push([
+      itemNo++,
+      `Overhead (${projectData.parameters.overheadRate}%)`,
+      '1',
+      'lot',
+      formatCurrencyForPDF(projectData.totals.overheadCost)
+    ]);
+
+    boqRows.push([
+      itemNo++,
+      `Contingency (${projectData.parameters.contingencyRate}%)`,
+      '1',
+      'lot',
+      formatCurrencyForPDF(projectData.totals.contingencyCost)
+    ]);
+
+    boqRows.push([
+      itemNo++,
+      `Profit Margin (${projectData.parameters.profitMarginRate}%)`,
+      '1',
+      'lot',
+      formatCurrencyForPDF(projectData.totals.profit)
+    ]);
+
+    boqRows.push([
+      itemNo++,
+      `VAT Tax (${projectData.parameters.taxRate}%)`,
+      '1',
+      'lot',
+      formatCurrencyForPDF(projectData.totals.tax)
+    ]);
+
+    // Total Indirect & Markup row
+    boqRows.push([
+      '',
+      'TOTAL INDIRECT & MARKUP',
+      '',
+      '',
+      formatCurrencyForPDF(projectData.totals.totalIndirectCost + projectData.totals.profit + projectData.totals.tax)
+    ]);
+
+    // Create combined BOQ table
+    doc.autoTable({
+      startY: y,
+      head: [boqColumns],
+      body: boqRows,
+      theme: 'grid',
+      styles: {
+        fontSize: 9,
+        cellPadding: 3,
+      },
+      headStyles: {
+        fillColor: [44, 62, 80],
+        textColor: 255,
+        fontStyle: 'bold',
+        fontSize: 9,
+      },
+      columnStyles: {
+        0: { cellWidth: 25, halign: 'center' },
+        1: { cellWidth: 80, halign: 'left' },
+        2: { cellWidth: 25, halign: 'center' },
+        3: { cellWidth: 25, halign: 'center' },
+        4: { cellWidth: 40, halign: 'right' }
+      },
+      didParseCell: function(data) {
+        const txt = (data.cell.raw || '').toString();
+        if (txt.includes("TOTAL INDIRECT & MARKUP")) {
+          data.cell.styles.fontStyle = 'bold';
+          data.cell.styles.fillColor = [240, 240, 240];
         }
+      }
+    });
 
-        // Set consistent font family and size for entire document
-        doc.setFont('helvetica');
-        doc.setFontSize(10);
+    y = doc.lastAutoTable.finalY + 10;
 
-        const leftMargin = 15;
-        const topMargin = 20;
-        let y = topMargin;
+    // FINAL PRICE (bold text below table)
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text("FINAL PRICE", leftMargin, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(formatCurrencyForPDF(projectData.totals.finalPrice), leftMargin + 100, y);
+    y += 20;
 
-        // Title
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text("POWER DISTRIBUTION SYSTEMS ESTIMATE", leftMargin, y);
-        y += 10;
-
-        // Project Info
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        const projectName = document.getElementById('projectName').value || "";
-        const clientName = document.getElementById('clientName').value || "";
-        const projectLocation = document.getElementById('projectLocation').value || "";
-        const preparedBy = document.getElementById('preparedBy').value || "";
-        const dateStr = new Date().toLocaleDateString();
-
-        doc.text(`Project: ${projectName}`, leftMargin, y);
-        doc.text(`Client: ${clientName}`, 100, y);
-        y += 6;
-        doc.text(`Location: ${projectLocation}`, leftMargin, y);
-        doc.text(`Prepared By: ${preparedBy}`, 100, y);
-        y += 6;
-        doc.text(`Date: ${dateStr}`, leftMargin, y);
-        doc.text(`Standard: ${projectData.standard === 'philippine' ? 'PEC' : 'IEC'}`, 100, y);
-        y += 6;
-        doc.text(`Unit System: ${projectData.unitSystem.toUpperCase()}`, leftMargin, y);
-        y += 15;
-
-        // Bill of Quantities
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('BILL OF QUANTITIES', leftMargin, y);
-        y += 8;
-
-        // Prepare table data - DIRECT COSTS
-        const directCostsColumns = [
-            'Item',
-            'Scope of Work',
-            'Qty',
-            'Unit',
-            'Material',
-            'Labor Hrs',
-            'Labor Cost',
-            'Total'
-        ];
-
-        const directCostsRows = [];
-        let itemNo = 1;
-
-        // Direct Costs items
-        projectData.workItems.forEach(item => {
-            if (item.quantity > 0) {
-                directCostsRows.push([
-                    itemNo++,
-                    item.name,
-                    formatNumber(item.quantity),
-                    item.unit,
-                    formatCurrencyForPDF(item.materialCost),
-                    formatNumber(item.quantity * item.laborHoursPerUnit, 1),
-                    formatCurrencyForPDF(item.laborCost),
-                    formatCurrencyForPDF(item.totalCost)
-                ]);
-            }
-        });
-
-        // Add Direct Cost Total
-        directCostsRows.push([
-            "",
-            "TOTAL DIRECT COSTS",
-            "",
-            "",
-            formatCurrencyForPDF(projectData.totals.totalMaterialCost),
-            formatNumber(projectData.totals.totalLaborHours, 1),
-            formatCurrencyForPDF(projectData.totals.totalLaborCost),
-            formatCurrencyForPDF(projectData.totals.totalDirectCost)
-        ]);
-
-        // Create Direct Costs table
-        doc.autoTable({
-            startY: y,
-            head: [directCostsColumns],
-            body: directCostsRows,
-            theme: 'grid',
-            styles: {
-                fontSize: 8,
-                cellPadding: 2,
-                lineWidth: 0.1
-            },
-            headStyles: {
-                fillColor: [44, 62, 80],
-                textColor: 255,
-                fontStyle: 'bold',
-                fontSize: 8,
-            },
-            columnStyles: {
-                0: { cellWidth: 15, halign: 'center' },
-                1: { cellWidth: 55, halign: 'left' },
-                2: { cellWidth: 15, halign: 'center' },
-                3: { cellWidth: 15, halign: 'center' },
-                4: { cellWidth: 25, halign: 'right' },
-                5: { cellWidth: 20, halign: 'right' },
-                6: { cellWidth: 25, halign: 'right' },
-                7: { cellWidth: 25, halign: 'right' }
-            },
-            didParseCell: function(data) {
-                const txt = (data.cell.raw || "").toString();
-                if (txt.includes("TOTAL DIRECT COSTS")) {
-                    data.cell.styles.fontStyle = 'bold';
-                    data.cell.styles.fillColor = [240, 240, 240];
-                }
-            },
-            margin: { left: leftMargin, right: 15 }
-        });
-
-        y = doc.lastAutoTable.finalY + 10;
-
-        // Check if we need a new page for indirect costs
-        if (y > 200) {
-            doc.addPage();
-            currentPage++;
-            y = topMargin;
-        }
-
-        // INDIRECT COSTS & MARKUP
-        const indirectCostsColumns = [
-            'Item',
-            'Scope of Work',
-            'Qty',
-            'Unit',
-            'Cost',
-            '',
-            '',
-            'Total'
-        ];
-
-        const indirectCostsRows = [];
-
-        // Permits & Fees
-        indirectCostsRows.push([
-            itemNo++,
-            'Permits & Fees',
-            '1',
-            'lot',
-            formatCurrencyForPDF(projectData.parameters.permitsCost),
-            "",
-            "",
-            formatCurrencyForPDF(projectData.parameters.permitsCost)
-        ]);
-
-        // Overhead
-        indirectCostsRows.push([
-            itemNo++,
-            `Overhead (${projectData.parameters.overheadRate}%)`,
-            '1',
-            'lot',
-            formatCurrencyForPDF(projectData.totals.overheadCost),
-            "",
-            "",
-            formatCurrencyForPDF(projectData.totals.overheadCost)
-        ]);
-
-        // Contingency
-        indirectCostsRows.push([
-            itemNo++,
-            `Contingency (${projectData.parameters.contingencyRate}%)`,
-            '1',
-            'lot',
-            formatCurrencyForPDF(projectData.totals.contingencyCost),
-            "",
-            "",
-            formatCurrencyForPDF(projectData.totals.contingencyCost)
-        ]);
-
-        // Profit Margin
-        indirectCostsRows.push([
-            itemNo++,
-            `Profit Margin (${projectData.parameters.profitMarginRate}%)`,
-            '1',
-            'lot',
-            formatCurrencyForPDF(projectData.totals.profit),
-            "",
-            "",
-            formatCurrencyForPDF(projectData.totals.profit)
-        ]);
-
-        // VAT Tax
-        indirectCostsRows.push([
-            itemNo++,
-            `VAT Tax (${projectData.parameters.taxRate}%)`,
-            '1',
-            'lot',
-            formatCurrencyForPDF(projectData.totals.tax),
-            "",
-            "",
-            formatCurrencyForPDF(projectData.totals.tax)
-        ]);
-
-        // Add Total Indirect & Markup
-        const totalIndirectMarkup = projectData.totals.totalIndirectCost + projectData.totals.profit + projectData.totals.tax;
-        indirectCostsRows.push([
-            "",
-            'TOTAL INDIRECT & MARKUP',
-            "",
-            "",
-            "",
-            "",
-            "",
-            formatCurrencyForPDF(totalIndirectMarkup)
-        ]);
-
-        // FINAL PRICE
-        indirectCostsRows.push([
-            "",
-            'FINAL PRICE',
-            "",
-            "",
-            "",
-            "",
-            "",
-            formatCurrencyForPDF(projectData.totals.finalPrice)
-        ]);
-
-        // Create Indirect Costs table
-        doc.autoTable({
-            startY: y,
-            head: [indirectCostsColumns],
-            body: indirectCostsRows,
-            theme: 'grid',
-            styles: {
-                fontSize: 8,
-                cellPadding: 2,
-                lineWidth: 0.1
-            },
-            headStyles: {
-                fillColor: [44, 62, 80],
-                textColor: 255,
-                fontStyle: 'bold',
-                fontSize: 8,
-            },
-            columnStyles: {
-                0: { cellWidth: 15, halign: 'center' },
-                1: { cellWidth: 65, halign: 'left' },
-                2: { cellWidth: 15, halign: 'center' },
-                3: { cellWidth: 15, halign: 'center' },
-                4: { cellWidth: 25, halign: 'right' },
-                5: { cellWidth: 0, halign: 'right' }, // Hidden column
-                6: { cellWidth: 0, halign: 'right' }, // Hidden column
-                7: { cellWidth: 30, halign: 'right' }
-            },
-            didParseCell: function(data) {
-                const txt = (data.cell.raw || "").toString();
-                if (txt.includes("TOTAL INDIRECT & MARKUP") || txt.includes("FINAL PRICE")) {
-                    data.cell.styles.fontStyle = 'bold';
-                    data.cell.styles.fillColor = [240, 240, 240];
-                }
-            },
-            margin: { left: leftMargin, right: 15 }
-        });
-
-        y = doc.lastAutoTable.finalY + 10;
-
-        // Add page numbers to all pages
-        totalPages = doc.internal.getNumberOfPages();
-        for (let i = 1; i <= totalPages; i++) {
-            doc.setPage(i);
-            addPageNumber();
-        }
-
-        // Save PDF
-        const safeName = (document.getElementById('projectName').value || 'project').replace(/[^a-z0-9]/gi, '_');
-        doc.save(`${safeName}_power_distribution_estimate.pdf`);
-
-    } catch (err) {
-        console.error(err);
-        alert('Error generating PDF: ' + err.message);
+    // Add Labor & Crew Planning section
+    // Check if we need a new page
+    if (y > 250) {
+      doc.addPage();
+      currentPage++;
+      y = topMargin;
     }
+
+    // H3: Labor & Crew Planning - Bold, Font 12
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text("LABOR & CREW PLANNING", leftMargin, y);
+    y += 15;
+
+    // Labor metrics
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Total Labor Hours: ${formatNumber(projectData.totals.totalLaborHours, 1)} hours`, leftMargin, y);
+    y += 12;
+    doc.text(`Total Labor Cost: ${formatCurrencyForPDF(projectData.totals.totalLaborCost)}`, leftMargin, y);
+    y += 12;
+    doc.text(`Equivalent Work Days: ${formatNumber(projectData.totals.totalLaborHours / 8, 1)} days (8h/day)`, leftMargin, y);
+    y += 15;
+
+    // Crew planning table
+    const crewTableColumns = [
+      'Crew Size',
+      'Workers',
+      'Days Required',
+      'Weeks Required',
+      'Total Hours',
+      'Daily Hours'
+    ];
+
+    const crewTableRows = [
+      [
+        'Small Crew',
+        '2',
+        formatNumber(projectData.totals.totalLaborHours / 16, 1),
+        formatNumber(projectData.totals.totalLaborHours / 80, 1),
+        formatNumber(projectData.totals.totalLaborHours, 1),
+        '8 hours/day'
+      ],
+      [
+        'Medium Crew',
+        '4',
+        formatNumber(projectData.totals.totalLaborHours / 32, 1),
+        formatNumber(projectData.totals.totalLaborHours / 160, 1),
+        formatNumber(projectData.totals.totalLaborHours, 1),
+        '8 hours/day'
+      ],
+      [
+        'Large Crew',
+        '6',
+        formatNumber(projectData.totals.totalLaborHours / 48, 1),
+        formatNumber(projectData.totals.totalLaborHours / 240, 1),
+        formatNumber(projectData.totals.totalLaborHours, 1),
+        '8 hours/day'
+      ]
+    ];
+
+    doc.autoTable({
+      startY: y,
+      head: [crewTableColumns],
+      body: crewTableRows,
+      theme: 'grid',
+      styles: {
+        fontSize: 9,
+        cellPadding: 3,
+      },
+      headStyles: {
+        fillColor: [44, 62, 80],
+        textColor: 255,
+        fontStyle: 'bold',
+        fontSize: 9,
+      },
+      columnStyles: {
+        0: { cellWidth: 35, halign: 'left' },
+        1: { cellWidth: 25, halign: 'center' },
+        2: { cellWidth: 35, halign: 'center' },
+        3: { cellWidth: 35, halign: 'center' },
+        4: { cellWidth: 35, halign: 'center' },
+        5: { cellWidth: 35, halign: 'center' }
+      }
+    });
+
+    // Calculate total pages and add page numbers
+    totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      currentPage = i;
+      addPageNumber();
+    }
+
+    doc.save('Power_Distribution_Systems_Estimate.pdf');
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    alert('Failed to generate PDF. Please check console for details.');
+  }
 }
 
 function exportToExcel() {
