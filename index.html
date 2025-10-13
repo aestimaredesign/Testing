@@ -1853,494 +1853,692 @@ function resetCalculator() {
 }
 
 function exportToPdf() {
-  if (!projectData.totals) {
-    alert('No results to export. Please calculate an estimate first.');
-    return;
-  }
-
-  try {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    // Track page numbers
-    let currentPage = 1;
-    let totalPages = 1;
-
-    // Function to add page number
-    function addPageNumber() {
-      const pageSize = doc.internal.pageSize;
-      doc.setFont('helvetica');
-      doc.setFontSize(9);
-      doc.setTextColor(120);
-      doc.text(`Page ${currentPage} of ${totalPages}`, pageSize.width - 60, pageSize.height - 30);
+    if (!projectData.totals) {
+        alert('No results to export. Please calculate an estimate first.');
+        return;
     }
 
-    // Set consistent font family and size for entire document
-    doc.setFont('helvetica');
-    doc.setFontSize(10);
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
 
-    const leftMargin = 20;
-    const topMargin = 30;
-    let y = topMargin;
+        // Track page numbers
+        let currentPage = 1;
+        let totalPages = 1;
 
-    // H1: POWER DISTRIBUTION SYSTEMS ESTIMATE - Bold, Font 16
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text("POWER DISTRIBUTION SYSTEMS ESTIMATE", leftMargin, y);
-    y += 20;
-
-    // Project Info (H5 - normal text, Font 10)
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    const projectName = document.getElementById('projectName').value || "";
-    const clientName = document.getElementById('clientName').value || "";
-    const projectLocation = document.getElementById('projectLocation').value || "";
-    const preparedBy = document.getElementById('preparedBy').value || "";
-    const dateStr = new Date().toLocaleDateString();
-
-    doc.text(`Project: ${projectName}`, leftMargin, y);
-    doc.text(`Client: ${clientName}`, 110, y);
-    y += 12;
-    doc.text(`Location: ${projectLocation}`, leftMargin, y);
-    doc.text(`Prepared By: ${preparedBy}`, 110, y);
-    y += 12;
-    doc.text(`Date: ${dateStr}`, leftMargin, y);
-    doc.text(`Standard: ${projectData.standard === 'philippine' ? 'PEC' : 'IEC'}`, 110, y);
-    y += 12;
-    doc.text(`Unit System: ${projectData.unitSystem.toUpperCase()}`, leftMargin, y);
-    y += 20;
-
-    // H3: Bill of Quantities - Bold, Font 12
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('BILL OF QUANTITIES', leftMargin, y);
-    y += 15;
-
-    // Prepare combined table data
-    const boqColumns = ['Item No.', 'Scope of Work', 'Qty', 'Unit', 'Material Cost'];
-
-    const boqRows = [];
-    let itemNo = 1;
-
-    // Direct Costs items (material only)
-    projectData.workItems.forEach(item => {
-      if (item.quantity > 0) {
-        boqRows.push([
-          itemNo++,
-          item.name,
-          formatNumber(item.quantity),
-          item.unit,
-          formatCurrencyForPDF(item.materialCost)
-        ]);
-      }
-    });
-
-    // Indirect Costs & Markup items
-    boqRows.push([
-      itemNo++,
-      'Permits & Fees',
-      '1',
-      'lot',
-      formatCurrencyForPDF(projectData.parameters.permitsCost)
-    ]);
-
-    boqRows.push([
-      itemNo++,
-      `Overhead (${projectData.parameters.overheadRate}%)`,
-      '1',
-      'lot',
-      formatCurrencyForPDF(projectData.totals.overheadCost)
-    ]);
-
-    boqRows.push([
-      itemNo++,
-      `Contingency (${projectData.parameters.contingencyRate}%)`,
-      '1',
-      'lot',
-      formatCurrencyForPDF(projectData.totals.contingencyCost)
-    ]);
-
-    boqRows.push([
-      itemNo++,
-      `Profit Margin (${projectData.parameters.profitMarginRate}%)`,
-      '1',
-      'lot',
-      formatCurrencyForPDF(projectData.totals.profit)
-    ]);
-
-    boqRows.push([
-      itemNo++,
-      `VAT Tax (${projectData.parameters.taxRate}%)`,
-      '1',
-      'lot',
-      formatCurrencyForPDF(projectData.totals.tax)
-    ]);
-
-    // Total Indirect & Markup row
-    boqRows.push([
-      '',
-      'TOTAL INDIRECT & MARKUP',
-      '',
-      '',
-      formatCurrencyForPDF(projectData.totals.totalIndirectCost + projectData.totals.profit + projectData.totals.tax)
-    ]);
-
-    // Create combined BOQ table
-    doc.autoTable({
-      startY: y,
-      head: [boqColumns],
-      body: boqRows,
-      theme: 'grid',
-      styles: {
-        fontSize: 9,
-        cellPadding: 3,
-      },
-      headStyles: {
-        fillColor: [44, 62, 80],
-        textColor: 255,
-        fontStyle: 'bold',
-        fontSize: 9,
-      },
-      columnStyles: {
-        0: { cellWidth: 25, halign: 'center' },
-        1: { cellWidth: 80, halign: 'left' },
-        2: { cellWidth: 25, halign: 'center' },
-        3: { cellWidth: 25, halign: 'center' },
-        4: { cellWidth: 40, halign: 'right' }
-      },
-      didParseCell: function(data) {
-        const txt = (data.cell.raw || '').toString();
-        if (txt.includes("TOTAL INDIRECT & MARKUP")) {
-          data.cell.styles.fontStyle = 'bold';
-          data.cell.styles.fillColor = [240, 240, 240];
+        // Function to add page number
+        function addPageNumber() {
+            const pageSize = doc.internal.pageSize;
+            doc.setFont('helvetica');
+            doc.setFontSize(9);
+            doc.setTextColor(120);
+            doc.text(`Page ${currentPage} of ${totalPages}`, pageSize.width - 60, pageSize.height - 30);
         }
-      }
-    });
 
-    y = doc.lastAutoTable.finalY + 10;
+        // Set consistent font family and size for entire document
+        doc.setFont('helvetica');
+        doc.setFontSize(10);
 
-    // FINAL PRICE (bold text below table)
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text("FINAL PRICE", leftMargin, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(formatCurrencyForPDF(projectData.totals.finalPrice), leftMargin + 100, y);
-    y += 20;
+        const leftMargin = 20;
+        const topMargin = 30;
+        let y = topMargin;
 
-    // Add Labor & Crew Planning section
-    // Check if we need a new page
-    if (y > 250) {
-      doc.addPage();
-      currentPage++;
-      y = topMargin;
+        // Project Information Section
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text("POWER DISTRIBUTION SYSTEMS ESTIMATE", leftMargin, y);
+        y += 20;
+
+        // Project Info
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        const projectName = document.getElementById('projectName').value || "";
+        const clientName = document.getElementById('clientName').value || "";
+        const projectLocation = document.getElementById('projectLocation').value || "";
+        const preparedBy = document.getElementById('preparedBy').value || "";
+        const dateStr = new Date().toLocaleDateString();
+
+        doc.text(`Project: ${projectName}`, leftMargin, y);
+        doc.text(`Client: ${clientName}`, 110, y);
+        y += 12;
+        doc.text(`Location: ${projectLocation}`, leftMargin, y);
+        doc.text(`Prepared By: ${preparedBy}`, 110, y);
+        y += 12;
+        doc.text(`Date: ${dateStr}`, leftMargin, y);
+        doc.text(`Standard: ${projectData.standard === 'philippine' ? 'PEC' : 'IEC'}`, 110, y);
+        y += 20;
+
+        // DIRECT COSTS TABLE
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('BILL OF QUANTITIES - DIRECT COSTS', leftMargin, y);
+        y += 15;
+
+        const directCostsColumns = [
+            'Item No.',
+            'Scope of Work',
+            'Quantity',
+            'Unit',
+            'Material Cost',
+            'Labor Hours',
+            'Labor Cost',
+            'Total Cost'
+        ];
+
+        const directCostsRows = [];
+        let itemNo = 1;
+
+        // Direct Costs items
+        projectData.workItems.forEach(item => {
+            if (item.quantity > 0) {
+                directCostsRows.push([
+                    itemNo++,
+                    item.name,
+                    formatNumber(item.quantity),
+                    item.unit,
+                    formatCurrencyForPDF(item.materialCost),
+                    formatNumber(item.quantity * item.laborHoursPerUnit, 1),
+                    formatCurrencyForPDF(item.laborCost),
+                    formatCurrencyForPDF(item.totalCost)
+                ]);
+            }
+        });
+
+        // Add Direct Cost Total
+        directCostsRows.push([
+            "",
+            "TOTAL DIRECT COSTS",
+            "",
+            "",
+            formatCurrencyForPDF(projectData.totals.totalMaterialCost),
+            formatNumber(projectData.totals.totalLaborHours, 1),
+            formatCurrencyForPDF(projectData.totals.totalLaborCost),
+            formatCurrencyForPDF(projectData.totals.totalDirectCost)
+        ]);
+
+        // Create Direct Costs table
+        doc.autoTable({
+            startY: y,
+            head: [directCostsColumns],
+            body: directCostsRows,
+            theme: 'grid',
+            styles: {
+                fontSize: 8,
+                cellPadding: 2,
+            },
+            headStyles: {
+                fillColor: [44, 62, 80],
+                textColor: 255,
+                fontStyle: 'bold',
+                fontSize: 8,
+            },
+            columnStyles: {
+                0: { cellWidth: 20, halign: 'center' },
+                1: { cellWidth: 60, halign: 'left' },
+                2: { cellWidth: 25, halign: 'center' },
+                3: { cellWidth: 20, halign: 'center' },
+                4: { cellWidth: 30, halign: 'right' },
+                5: { cellWidth: 25, halign: 'right' },
+                6: { cellWidth: 30, halign: 'right' },
+                7: { cellWidth: 30, halign: 'right' }
+            },
+            didParseCell: function(data) {
+                const txt = (data.cell.raw || "").toString();
+                if (txt.includes("TOTAL DIRECT COSTS")) {
+                    data.cell.styles.fontStyle = 'bold';
+                    data.cell.styles.fillColor = [240, 240, 240];
+                }
+            }
+        });
+
+        y = doc.lastAutoTable.finalY + 15;
+
+        // INDIRECT COSTS & MARKUP TABLE
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('INDIRECT COSTS & MARKUP', leftMargin, y);
+        y += 15;
+
+        const indirectCostsColumns = [
+            'Item No.',
+            'Scope of Work',
+            'Quantity',
+            'Unit',
+            'Material Cost',
+            'Labor Hours',
+            'Labor Cost',
+            'Total Cost'
+        ];
+
+        const indirectCostsRows = [];
+        
+        // Permits & Fees
+        indirectCostsRows.push([
+            itemNo++,
+            'Permits & Fees',
+            '1',
+            'lot',
+            formatCurrencyForPDF(projectData.parameters.permitsCost),
+            "",
+            "",
+            formatCurrencyForPDF(projectData.parameters.permitsCost)
+        ]);
+
+        // Overhead
+        indirectCostsRows.push([
+            itemNo++,
+            `Overhead (${projectData.parameters.overheadRate}%)`,
+            '1',
+            'lot',
+            formatCurrencyForPDF(projectData.totals.overheadCost),
+            "",
+            "",
+            formatCurrencyForPDF(projectData.totals.overheadCost)
+        ]);
+
+        // Contingency
+        indirectCostsRows.push([
+            itemNo++,
+            `Contingency (${projectData.parameters.contingencyRate}%)`,
+            '1',
+            'lot',
+            formatCurrencyForPDF(projectData.totals.contingencyCost),
+            "",
+            "",
+            formatCurrencyForPDF(projectData.totals.contingencyCost)
+        ]);
+
+        // Profit Margin
+        indirectCostsRows.push([
+            itemNo++,
+            `Profit Margin (${projectData.parameters.profitMarginRate}%)`,
+            '1',
+            'lot',
+            formatCurrencyForPDF(projectData.totals.profit),
+            "",
+            "",
+            formatCurrencyForPDF(projectData.totals.profit)
+        ]);
+
+        // VAT Tax
+        indirectCostsRows.push([
+            itemNo++,
+            `Tax (VAT) (${projectData.parameters.taxRate}%)`,
+            '1',
+            'lot',
+            formatCurrencyForPDF(projectData.totals.tax),
+            "",
+            "",
+            formatCurrencyForPDF(projectData.totals.tax)
+        ]);
+
+        // Add Total Indirect & Markup
+        const totalIndirectMarkup = projectData.totals.totalIndirectCost + projectData.totals.profit + projectData.totals.tax;
+        indirectCostsRows.push([
+            "",
+            "TOTAL INDIRECT COSTS & MARKUP",
+            "",
+            "",
+            formatCurrencyForPDF(totalIndirectMarkup),
+            "",
+            "",
+            formatCurrencyForPDF(totalIndirectMarkup)
+        ]);
+
+        // Create Indirect Costs table
+        doc.autoTable({
+            startY: y,
+            head: [indirectCostsColumns],
+            body: indirectCostsRows,
+            theme: 'grid',
+            styles: {
+                fontSize: 8,
+                cellPadding: 2,
+            },
+            headStyles: {
+                fillColor: [44, 62, 80],
+                textColor: 255,
+                fontStyle: 'bold',
+                fontSize: 8,
+            },
+            columnStyles: {
+                0: { cellWidth: 20, halign: 'center' },
+                1: { cellWidth: 60, halign: 'left' },
+                2: { cellWidth: 25, halign: 'center' },
+                3: { cellWidth: 20, halign: 'center' },
+                4: { cellWidth: 30, halign: 'right' },
+                5: { cellWidth: 25, halign: 'right' },
+                6: { cellWidth: 30, halign: 'right' },
+                7: { cellWidth: 30, halign: 'right' }
+            },
+            didParseCell: function(data) {
+                const txt = (data.cell.raw || "").toString();
+                if (txt.includes("TOTAL INDIRECT COSTS & MARKUP")) {
+                    data.cell.styles.fontStyle = 'bold';
+                    data.cell.styles.fillColor = [240, 240, 240];
+                }
+            }
+        });
+
+        y = doc.lastAutoTable.finalY + 15;
+
+        // SUMMARY TABLE
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('SUMMARY', leftMargin, y);
+        y += 15;
+
+        const summaryColumns = [
+            'Category',
+            'Material Cost',
+            'Labor Hours',
+            'Labor Cost',
+            'Total Cost'
+        ];
+
+        const summaryRows = [
+            [
+                'TOTAL DIRECT COSTS',
+                formatCurrencyForPDF(projectData.totals.totalMaterialCost),
+                formatNumber(projectData.totals.totalLaborHours, 1),
+                formatCurrencyForPDF(projectData.totals.totalLaborCost),
+                formatCurrencyForPDF(projectData.totals.totalDirectCost)
+            ],
+            [
+                'TOTAL INDIRECT COSTS & MARKUP',
+                formatCurrencyForPDF(totalIndirectMarkup),
+                "",
+                "",
+                formatCurrencyForPDF(totalIndirectMarkup)
+            ],
+            [
+                'GRAND TOTAL',
+                formatCurrencyForPDF(projectData.totals.totalMaterialCost + totalIndirectMarkup),
+                formatNumber(projectData.totals.totalLaborHours, 1),
+                formatCurrencyForPDF(projectData.totals.totalLaborCost),
+                formatCurrencyForPDF(projectData.totals.finalPrice)
+            ]
+        ];
+
+        doc.autoTable({
+            startY: y,
+            head: [summaryColumns],
+            body: summaryRows,
+            theme: 'grid',
+            styles: {
+                fontSize: 8,
+                cellPadding: 2,
+            },
+            headStyles: {
+                fillColor: [44, 62, 80],
+                textColor: 255,
+                fontStyle: 'bold',
+                fontSize: 8,
+            },
+            columnStyles: {
+                0: { cellWidth: 50, halign: 'left' },
+                1: { cellWidth: 30, halign: 'right' },
+                2: { cellWidth: 25, halign: 'right' },
+                3: { cellWidth: 30, halign: 'right' },
+                4: { cellWidth: 30, halign: 'right' }
+            },
+            didParseCell: function(data) {
+                const txt = (data.cell.raw || "").toString();
+                if (txt.includes("GRAND TOTAL") || txt.includes("TOTAL")) {
+                    data.cell.styles.fontStyle = 'bold';
+                    data.cell.styles.fillColor = [240, 240, 240];
+                }
+            }
+        });
+
+        y = doc.lastAutoTable.finalY + 20;
+
+        // LABOR & CREW PLANNING SECTION
+        // Check if we need a new page
+        if (y > 250) {
+            doc.addPage();
+            currentPage++;
+            y = topMargin;
+        }
+
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text("LABOR & CREW PLANNING", leftMargin, y);
+        y += 15;
+
+        // Labor metrics
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Total Labor Hours: ${formatNumber(projectData.totals.totalLaborHours, 1)} hours`, leftMargin, y);
+        y += 12;
+        doc.text(`Total Labor Cost: ${formatCurrencyForPDF(projectData.totals.totalLaborCost)}`, leftMargin, y);
+        y += 12;
+        doc.text(`Equivalent Work Days: ${formatNumber(projectData.totals.totalLaborHours / 8, 1)} days (8h/day)`, leftMargin, y);
+        y += 15;
+
+        // Crew planning table
+        const crewTableColumns = [
+            'Crew Size',
+            'Workers',
+            'Days Required',
+            'Weeks Required',
+            'Total Hours',
+            'Daily Hours',
+            'Notes'
+        ];
+
+        const crewTableRows = [
+            [
+                'Small crew',
+                '2',
+                formatNumber(projectData.totals.totalLaborHours / 16, 1),
+                formatNumber(projectData.totals.totalLaborHours / 80, 1),
+                formatNumber(projectData.totals.totalLaborHours, 1),
+                '8 hours/day',
+                'Basic installation crew'
+            ],
+            [
+                'Medium crew',
+                '4',
+                formatNumber(projectData.totals.totalLaborHours / 32, 1),
+                formatNumber(projectData.totals.totalLaborHours / 160, 1),
+                formatNumber(projectData.totals.totalLaborHours, 1),
+                '8 hours/day',
+                'Standard project crew'
+            ],
+            [
+                'Large crew',
+                '6',
+                formatNumber(projectData.totals.totalLaborHours / 48, 1),
+                formatNumber(projectData.totals.totalLaborHours / 240, 1),
+                formatNumber(projectData.totals.totalLaborHours, 1),
+                '8 hours/day',
+                'Accelerated timeline'
+            ]
+        ];
+
+        doc.autoTable({
+            startY: y,
+            head: [crewTableColumns],
+            body: crewTableRows,
+            theme: 'grid',
+            styles: {
+                fontSize: 8,
+                cellPadding: 2,
+            },
+            headStyles: {
+                fillColor: [44, 62, 80],
+                textColor: 255,
+                fontStyle: 'bold',
+                fontSize: 8,
+            },
+            columnStyles: {
+                0: { cellWidth: 30, halign: 'left' },
+                1: { cellWidth: 20, halign: 'center' },
+                2: { cellWidth: 30, halign: 'center' },
+                3: { cellWidth: 30, halign: 'center' },
+                4: { cellWidth: 30, halign: 'center' },
+                5: { cellWidth: 30, halign: 'center' },
+                6: { cellWidth: 45, halign: 'left' }
+            }
+        });
+
+        // Calculate total pages and add page numbers
+        totalPages = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+            doc.setPage(i);
+            addPageNumber();
+        }
+
+        // Save PDF
+        const safeName = (document.getElementById('projectName').value || 'project').replace(/[^a-z0-9]/gi, '_');
+        doc.save(`${safeName}_power_distribution_estimate.pdf`);
+
+    } catch (err) {
+        console.error(err);
+        alert('Error generating PDF: ' + err.message);
     }
-
-    // H3: Labor & Crew Planning - Bold, Font 12
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text("LABOR & CREW PLANNING", leftMargin, y);
-    y += 15;
-
-    // Labor metrics
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Total Labor Hours: ${formatNumber(projectData.totals.totalLaborHours, 1)} hours`, leftMargin, y);
-    y += 12;
-    doc.text(`Total Labor Cost: ${formatCurrencyForPDF(projectData.totals.totalLaborCost)}`, leftMargin, y);
-    y += 12;
-    doc.text(`Equivalent Work Days: ${formatNumber(projectData.totals.totalLaborHours / 8, 1)} days (8h/day)`, leftMargin, y);
-    y += 15;
-
-    // Crew planning table
-    const crewTableColumns = [
-      'Crew Size',
-      'Workers',
-      'Days Required',
-      'Weeks Required',
-      'Total Hours',
-      'Daily Hours'
-    ];
-
-    const crewTableRows = [
-      [
-        'Small Crew',
-        '2',
-        formatNumber(projectData.totals.totalLaborHours / 16, 1),
-        formatNumber(projectData.totals.totalLaborHours / 80, 1),
-        formatNumber(projectData.totals.totalLaborHours, 1),
-        '8 hours/day'
-      ],
-      [
-        'Medium Crew',
-        '4',
-        formatNumber(projectData.totals.totalLaborHours / 32, 1),
-        formatNumber(projectData.totals.totalLaborHours / 160, 1),
-        formatNumber(projectData.totals.totalLaborHours, 1),
-        '8 hours/day'
-      ],
-      [
-        'Large Crew',
-        '6',
-        formatNumber(projectData.totals.totalLaborHours / 48, 1),
-        formatNumber(projectData.totals.totalLaborHours / 240, 1),
-        formatNumber(projectData.totals.totalLaborHours, 1),
-        '8 hours/day'
-      ]
-    ];
-
-    doc.autoTable({
-      startY: y,
-      head: [crewTableColumns],
-      body: crewTableRows,
-      theme: 'grid',
-      styles: {
-        fontSize: 9,
-        cellPadding: 3,
-      },
-      headStyles: {
-        fillColor: [44, 62, 80],
-        textColor: 255,
-        fontStyle: 'bold',
-        fontSize: 9,
-      },
-      columnStyles: {
-        0: { cellWidth: 35, halign: 'left' },
-        1: { cellWidth: 25, halign: 'center' },
-        2: { cellWidth: 35, halign: 'center' },
-        3: { cellWidth: 35, halign: 'center' },
-        4: { cellWidth: 35, halign: 'center' },
-        5: { cellWidth: 35, halign: 'center' }
-      }
-    });
-
-    // Calculate total pages and add page numbers
-    totalPages = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= totalPages; i++) {
-      doc.setPage(i);
-      currentPage = i;
-      addPageNumber();
-    }
-
-    doc.save('Power_Distribution_Systems_Estimate.pdf');
-  } catch (error) {
-    console.error('Error generating PDF:', error);
-    alert('Failed to generate PDF. Please check console for details.');
-  }
 }
 
 function exportToExcel() {
-  if (!projectData.totals) {
-    alert('No results to export. Please calculate an estimate first.');
-    return;
-  }
-
-  try {
-    // Create workbook
-    const wb = XLSX.utils.book_new();
-
-    // Project Summary Sheet
-    const summaryData = [
-      ['POWER DISTRIBUTION SYSTEMS ESTIMATE'],
-      [],
-      ['Project Information'],
-      ['Project Name', projectData.projectName],
-      ['Client Name', projectData.clientName || 'Not specified'],
-      ['Location', projectData.projectLocation || 'Not specified'],
-      ['Prepared By', projectData.preparedBy || 'Not specified'],
-      ['Date', projectData.projectDate || 'Not specified'],
-      ['Standard', projectData.standard === 'philippine' ? 'Philippine Electrical Code (PEC)' : 'International Electrotechnical Commission (IEC)'],
-      ['Unit System', projectData.unitSystem.toUpperCase()],
-      ['Currency', projectData.currency],
-      [],
-      ['COST SUMMARY'],
-      ['Direct Costs', projectData.totals.totalDirectCost],
-      ['- Materials', projectData.totals.totalMaterialCost],
-      ['- Labor', projectData.totals.totalLaborCost],
-      ['Total Labor Hours', projectData.totals.totalLaborHours],
-      [],
-      ['Overhead', projectData.totals.overheadCost],
-      ['Contingency', projectData.totals.contingencyCost],
-      ['Permits & Fees', projectData.parameters.permitsCost],
-      ['Subtotal', projectData.totals.costBeforeProfit],
-      ['Profit Margin', projectData.totals.profit],
-      ['Total Before VAT', projectData.totals.totalBeforeTax],
-      [`VAT (${projectData.parameters.taxRate}%)`, projectData.totals.tax],
-      ['FINAL PRICE', projectData.totals.finalPrice]
-    ];
-
-    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-    
-    // Apply number formatting to currency cells in summary
-    const currencyCol = 1; // Column B
-    for (let i = 11; i <= 23; i++) { // Rows with currency values
-      if (wsSummary[XLSX.utils.encode_cell({r: i, c: currencyCol})]) {
-        wsSummary[XLSX.utils.encode_cell({r: i, c: currencyCol})].z = '#,##0.00';
-      }
+    if (!projectData.totals) {
+        alert('No results to export. Please calculate an estimate first.');
+        return;
     }
-    
-    XLSX.utils.book_append_sheet(wb, wsSummary, 'Project Summary');
 
-    // Bill of Quantities Sheet
-    const breakdownData = [
-      ['BILL OF QUANTITIES'],
-      [],
-      ['Item No.', 'Scope of Work', 'Quantity', 'Unit', 'Material Cost', 'Labor Hours', 'Labor Cost', 'Total Cost']
-    ];
+    try {
+        // Create workbook
+        const wb = XLSX.utils.book_new();
 
-    let itemNo = 1;
+        // Main Data Sheet (Matches the Excel template structure)
+        const mainData = [
+            // Project Information
+            ['Project:', projectData.projectName || ''],
+            ['Client:', projectData.clientName || ''],
+            ['Location:', projectData.projectLocation || ''],
+            ['Prepared By:', projectData.preparedBy || ''],
+            ['Date:', projectData.projectDate || ''],
+            [], // Empty row
+            
+            // Direct Costs Header
+            ['Item No.', 'Scope of Work', 'Quantity', 'Unit', 'Material Cost', 'Labor Hours', 'Labor Cost', 'Total Cost'],
+        ];
 
-    // DIRECT COSTS SECTION
-    breakdownData.push(['DIRECT COSTS', '', '', '', '', '', '', '']);
-    
-    // Materials
-    projectData.workItems.forEach(item => {
-      if (item.quantity > 0) {
-        breakdownData.push([
-          itemNo++,
-          item.name,
-          item.quantity,
-          item.unit,
-          item.materialCost,
-          item.quantity * item.laborHoursPerUnit,
-          item.laborCost,
-          item.totalCost
+        let itemNo = 1;
+
+        // Direct Costs Items
+        projectData.workItems.forEach(item => {
+            if (item.quantity > 0) {
+                mainData.push([
+                    itemNo++,
+                    item.name,
+                    item.quantity,
+                    item.unit,
+                    item.materialCost,
+                    item.quantity * item.laborHoursPerUnit,
+                    item.laborCost,
+                    item.totalCost
+                ]);
+            }
+        });
+
+        // Total Direct Costs
+        mainData.push([
+            "",
+            "TOTAL DIRECT COSTS",
+            "",
+            "",
+            projectData.totals.totalMaterialCost,
+            projectData.totals.totalLaborHours,
+            projectData.totals.totalLaborCost,
+            projectData.totals.totalDirectCost
         ]);
-      }
-    });
 
-    // Add Direct Cost Total
-    breakdownData.push([
-      '',
-      'TOTAL DIRECT COSTS',
-      '',
-      '',
-      projectData.totals.totalMaterialCost,
-      projectData.totals.totalLaborHours,
-      projectData.totals.totalLaborCost,
-      projectData.totals.totalDirectCost
-    ]);
+        mainData.push([]); // Empty row
 
-    // INDIRECT COSTS & MARKUP SECTION
-    breakdownData.push(['INDIRECT COSTS & MARKUP', '', '', '', '', '', '', '']);
-    
-    // Permits & Fees
-    breakdownData.push([
-      itemNo++,
-      'Permits & Fees',
-      1,
-      'lot',
-      projectData.parameters.permitsCost,
-      '',
-      '',
-      projectData.parameters.permitsCost
-    ]);
+        // Indirect Costs Header
+        mainData.push(['Item No.', 'Scope of Work', 'Quantity', 'Unit', 'Material Cost', 'Labor Hours', 'Labor Cost', 'Total Cost']);
 
-    // Overhead
-    breakdownData.push([
-      itemNo++,
-      `Overhead (${projectData.parameters.overheadRate}%)`,
-      1,
-      'lot',
-      projectData.totals.overheadCost,
-      '',
-      '',
-      projectData.totals.overheadCost
-    ]);
+        // Indirect Costs Items
+        // Permits & Fees
+        mainData.push([
+            itemNo++,
+            'Permits & Fees',
+            1,
+            'lot',
+            projectData.parameters.permitsCost,
+            "",
+            "",
+            projectData.parameters.permitsCost
+        ]);
 
-    // Contingency
-    breakdownData.push([
-      itemNo++,
-      `Contingency (${projectData.parameters.contingencyRate}%)`,
-      1,
-      'lot',
-      projectData.totals.contingencyCost,
-      '',
-      '',
-      projectData.totals.contingencyCost
-    ]);
+        // Overhead
+        mainData.push([
+            itemNo++,
+            `Overhead (${projectData.parameters.overheadRate}%)`,
+            1,
+            'lot',
+            projectData.totals.overheadCost,
+            "",
+            "",
+            projectData.totals.overheadCost
+        ]);
 
-    // Profit Margin
-    breakdownData.push([
-      itemNo++,
-      `Profit Margin (${projectData.parameters.profitMarginRate}%)`,
-      1,
-      'lot',
-      projectData.totals.profit,
-      '',
-      '',
-      projectData.totals.profit
-    ]);
+        // Contingency
+        mainData.push([
+            itemNo++,
+            `Contingency (${projectData.parameters.contingencyRate}%)`,
+            1,
+            'lot',
+            projectData.totals.contingencyCost,
+            "",
+            "",
+            projectData.totals.contingencyCost
+        ]);
 
-    // VAT Tax
-    breakdownData.push([
-      itemNo++,
-      `VAT Tax (${projectData.parameters.taxRate}%)`,
-      1,
-      'lot',
-      projectData.totals.tax,
-      '',
-      '',
-      projectData.totals.tax
-    ]);
+        // Profit Margin
+        mainData.push([
+            itemNo++,
+            `Profit Margin (${projectData.parameters.profitMarginRate}%)`,
+            1,
+            'lot',
+            projectData.totals.profit,
+            "",
+            "",
+            projectData.totals.profit
+        ]);
 
-    // Add Total Indirect & Markup
-    const totalAdditional = projectData.totals.totalIndirectCost + projectData.totals.profit + projectData.totals.tax;
-    breakdownData.push([
-      '',
-      'TOTAL INDIRECT & MARKUP',
-      '',
-      '',
-      totalAdditional,
-      '',
-      '',
-      totalAdditional
-    ]);
+        // VAT Tax
+        mainData.push([
+            itemNo++,
+            `Tax (VAT) (${projectData.parameters.taxRate}%)`,
+            1,
+            'lot',
+            projectData.totals.tax,
+            "",
+            "",
+            projectData.totals.tax
+        ]);
 
-    // FINAL PRICE
-    breakdownData.push([
-      '',
-      'FINAL PRICE',
-      '',
-      '',
-      '',
-      '',
-      '',
-      projectData.totals.finalPrice
-    ]);
+        // Total Indirect Costs & Markup
+        const totalIndirectMarkup = projectData.totals.totalIndirectCost + projectData.totals.profit + projectData.totals.tax;
+        mainData.push([
+            "",
+            "TOTAL INDIRECT COSTS & MARKUP",
+            "",
+            "",
+            totalIndirectMarkup,
+            "",
+            "",
+            totalIndirectMarkup
+        ]);
 
-    const wsBreakdown = XLSX.utils.aoa_to_sheet(breakdownData);
-    
-    // Apply formatting to Bill of Quantities sheet
-    const currencyCols = [4, 6, 7]; // Material Cost, Labor Cost, Total Cost columns (0-indexed)
-    const numberCols = [2, 5]; // Quantity, Labor Hours columns (0-indexed)
-    
-    for (let r = 3; r < breakdownData.length; r++) {
-      // Currency formatting
-      currencyCols.forEach(col => {
-        const cellRef = XLSX.utils.encode_cell({r: r, c: col});
-        if (wsBreakdown[cellRef] && typeof wsBreakdown[cellRef].v === 'number') {
-          wsBreakdown[cellRef].z = '#,##0.00';
+        mainData.push([]); // Empty row
+
+        // Summary Section
+        mainData.push(['Category', '', '', '', 'Material Cost', 'Labor Hours', 'Labor Cost', 'Total Cost']);
+        
+        mainData.push([
+            'TOTAL DIRECT COSTS',
+            '', '', '',
+            projectData.totals.totalMaterialCost,
+            projectData.totals.totalLaborHours,
+            projectData.totals.totalLaborCost,
+            projectData.totals.totalDirectCost
+        ]);
+
+        mainData.push([
+            'TOTAL INDIRECT COSTS & MARKUP',
+            '', '', '',
+            totalIndirectMarkup,
+            "", "",
+            totalIndirectMarkup
+        ]);
+
+        mainData.push([
+            'GRAND TOTAL',
+            '', '', '',
+            projectData.totals.totalMaterialCost + totalIndirectMarkup,
+            projectData.totals.totalLaborHours,
+            projectData.totals.totalLaborCost,
+            projectData.totals.finalPrice
+        ]);
+
+        mainData.push([]); // Empty row
+
+        // Labor & Crew Planning Section
+        mainData.push(['LABOR & CREW PLANNING']);
+        mainData.push(['Total Labor Hours:', projectData.totals.totalLaborHours]);
+        mainData.push(['Total Labor Cost:', projectData.totals.totalLaborCost]);
+        mainData.push(['Equivalent Work Days:', projectData.totals.totalLaborHours / 8]);
+        mainData.push([]);
+        
+        mainData.push(['Crew Size', 'Workers', 'Days Required', 'Weeks Required', 'Total Hours', 'Daily Hours', 'Notes']);
+        
+        mainData.push([
+            'Small crew',
+            2,
+            projectData.totals.totalLaborHours / 16,
+            projectData.totals.totalLaborHours / 80,
+            projectData.totals.totalLaborHours,
+            '8 hours/day',
+            'Basic installation crew'
+        ]);
+
+        mainData.push([
+            'Medium crew',
+            4,
+            projectData.totals.totalLaborHours / 32,
+            projectData.totals.totalLaborHours / 160,
+            projectData.totals.totalLaborHours,
+            '8 hours/day',
+            'Standard project crew'
+        ]);
+
+        mainData.push([
+            'Large crew',
+            6,
+            projectData.totals.totalLaborHours / 48,
+            projectData.totals.totalLaborHours / 240,
+            projectData.totals.totalLaborHours,
+            '8 hours/day',
+            'Accelerated timeline'
+        ]);
+
+        const wsMain = XLSX.utils.aoa_to_sheet(mainData);
+
+        // Apply formatting
+        const currencyCols = [4, 6, 7]; // Material Cost, Labor Cost, Total Cost columns (0-indexed)
+        const numberCols = [2, 5]; // Quantity, Labor Hours columns (0-indexed)
+
+        for (let r = 0; r < mainData.length; r++) {
+            // Currency formatting
+            currencyCols.forEach(col => {
+                const cellRef = XLSX.utils.encode_cell({r: r, c: col});
+                if (wsMain[cellRef] && typeof wsMain[cellRef].v === 'number') {
+                    wsMain[cellRef].z = '#,##0.00';
+                }
+            });
+
+            // Number formatting
+            numberCols.forEach(col => {
+                const cellRef = XLSX.utils.encode_cell({r: r, c: col});
+                if (wsMain[cellRef] && typeof wsMain[cellRef].v === 'number') {
+                    wsMain[cellRef].z = col === 5 ? '0.0' : '0';
+                }
+            });
         }
-      });
-      
-      // Number formatting
-      numberCols.forEach(col => {
-        const cellRef = XLSX.utils.encode_cell({r: r, c: col});
-        if (wsBreakdown[cellRef] && typeof wsBreakdown[cellRef].v === 'number') {
-          wsBreakdown[cellRef].z = col === 5 ? '0.0' : '0';
-        }
-      });
+
+        XLSX.utils.book_append_sheet(wb, wsMain, 'Power Distribution Estimate');
+
+        // Save Excel file
+        const safeName = (projectData.projectName || 'project').replace(/[^a-z0-9]/gi, '_');
+        XLSX.writeFile(wb, `${safeName}_power_distribution_estimate.xlsx`);
+
+    } catch (err) {
+        console.error(err);
+        alert('Error generating Excel file: ' + err.message);
     }
-    
-    XLSX.utils.book_append_sheet(wb, wsBreakdown, 'Bill of Quantities');
-
-    // Save Excel file
-    XLSX.writeFile(wb, `power-distribution-estimate-${projectData.projectName || 'project'}-${new Date().toISOString().split('T')[0]}.xlsx`);
-
-  } catch (err) {
-    console.error(err);
-    alert('Error generating Excel file: ' + err.message);
-  }
 }
 
 function saveResultsAsJson() {
