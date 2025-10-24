@@ -383,7 +383,7 @@
 
                 <div class="input-group">
                     <label>Project Location</label>
-                    <input type="text" id="projectLocation" placeholder="e.g., New York, USA">
+                    <input type="text" id="projectLocation" placeholder="e.g., Manila, Philippines">
                 </div>
 
                 <div class="input-group">
@@ -415,8 +415,8 @@
                         <div class="input-row">
                             <div class="input-group">
                                 <label class="tooltip">Labor Rate (per hour)<span class="tooltiptext">Hourly rate for electrician labor</span></label>
-                                <input type="number" id="laborRate" value="45" step="0.01">
-                                <div class="unit-label">USD/hour</div>
+                                <input type="number" id="laborRate" value="250" step="0.01">
+                                <div class="unit-label currency-unit">PHP/hour</div>
                             </div>
                             <div class="input-group">
                                 <label class="tooltip">Overhead Rate (%)<span class="tooltiptext">Percentage for general overhead costs</span></label>
@@ -431,6 +431,7 @@
                             <div class="input-group">
                                 <label>Currency</label>
                                 <select id="currency">
+                                    <option value="PHP">Philippine Peso (₱)</option>
                                     <option value="USD">US Dollar ($)</option>
                                     <option value="EUR">Euro (€)</option>
                                     <option value="JPY">Japanese Yen (¥)</option>
@@ -458,7 +459,7 @@
                                 <div class="input-group">
                                     <label>Cost per Unit</label>
                                     <input type="number" id="pipeCostPerUnit" value="2.50" step="0.01">
-                                    <div class="unit-label">USD/<span class="length-unit-short">ft</span></div>
+                                    <div class="unit-label">PHP/<span class="length-unit-short">ft</span></div>
                                 </div>
                             </div>
                             <div class="input-row">
@@ -481,7 +482,7 @@
                                 <div class="input-group">
                                     <label>Unit Cost</label>
                                     <input type="number" id="couplingsUnitCost" value="1.20" step="0.01">
-                                    <div class="unit-label">USD</div>
+                                    <div class="unit-label">PHP</div>
                                 </div>
                                 <div class="input-group">
                                     <label>Labor Hours per Unit</label>
@@ -502,7 +503,7 @@
                                 <div class="input-group">
                                     <label>Unit Cost</label>
                                     <input type="number" id="elbowsUnitCost" value="2.50" step="0.01">
-                                    <div class="unit-label">USD</div>
+                                    <div class="unit-label">PHP</div>
                                 </div>
                                 <div class="input-group">
                                     <label>Labor Hours per Unit</label>
@@ -523,7 +524,7 @@
                                 <div class="input-group">
                                     <label>Unit Cost</label>
                                     <input type="number" id="connectorsUnitCost" value="1.80" step="0.01">
-                                    <div class="unit-label">USD</div>
+                                    <div class="unit-label">PHP</div>
                                 </div>
                                 <div class="input-group">
                                     <label>Labor Hours per Unit</label>
@@ -563,25 +564,25 @@
                         </div>
 
                         <div class="help-section">
-                            <h3>Reference Costs (2025 Averages)</h3>
+                            <h3>Reference Costs (2025 Averages, USD)</h3>
                             <div class="reference-box">
                                 <h4>PVC Conduit (1"):</h4>
                                 <ul>
-                                    <li>Cost: $2.50/ft ($8.20/m)</li>
-                                    <li>Couplings: $1.20/unit</li>
-                                    <li>90-Degree Elbows: $2.50/unit</li>
-                                    <li>Connectors: $1.80/unit</li>
+                                    <li>Cost: $2.50/ft (₱140/m)</li>
+                                    <li>Couplings: $1.20/unit (₱67/unit)</li>
+                                    <li>90-Degree Elbows: $2.50/unit (₱140/unit)</li>
+                                    <li>Connectors: $1.80/unit (₱101/unit)</li>
                                 </ul>
                                 <h4>EMT Conduit (1"):</h4>
                                 <ul>
-                                    <li>Cost: $3.75/ft ($12.30/m)</li>
-                                    <li>Couplings: $1.50/unit</li>
-                                    <li>90-Degree Elbows: $3.20/unit</li>
-                                    <li>Connectors: $2.10/unit</li>
+                                    <li>Cost: $3.75/ft (₱210/m)</li>
+                                    <li>Couplings: $1.50/unit (₱84/unit)</li>
+                                    <li>90-Degree Elbows: $3.20/unit (₱179/unit)</li>
+                                    <li>Connectors: $2.10/unit (₱118/unit)</li>
                                 </ul>
                                 <h4>Labor Rates:</h4>
                                 <ul>
-                                    <li>Electrician: $45/hour (default)</li>
+                                    <li>Electrician: ₱250/hour ($4.50/hour)</li>
                                     <li>Pipe Installation: 2.5 hours/100ft</li>
                                     <li>Fitting Installation: 0.1 hours/unit</li>
                                 </ul>
@@ -672,8 +673,9 @@
         let currentUnitSystem = 'imperial';
         let projectData = {};
         const FEET_PER_METER = 3.28084;
+        const PHP_TO_USD = 0.018; // Approximate 2025 exchange rate: 1 PHP ≈ 0.018 USD
 
-        // Material price database (USD, 2025 averages)
+        // Material price database (USD and PHP, 2025 averages)
         const materials = {
             PVC: {
                 pipe_cost_per_foot: 2.50,
@@ -755,8 +757,10 @@
             exportPdfBtn.addEventListener('click', exportToPdf);
             exportExcelBtn.addEventListener('click', exportToExcel);
 
-            // Input validation
+            // Input validation and currency update
             setupInputValidation();
+            document.getElementById('currency').addEventListener('change', updateCurrency);
+            updateCurrency(); // Initial currency setup
         });
 
         // Utility functions
@@ -777,6 +781,7 @@
             const c = document.getElementById('currency').value;
             let symbol = '';
             switch (c) {
+                case 'PHP': symbol = '₱'; break;
                 case 'USD': symbol = '$'; break;
                 case 'EUR': symbol = '€'; break;
                 case 'JPY': symbol = '¥'; break;
@@ -797,11 +802,32 @@
             updateConduitCosts();
         }
 
-        function updateConduitCosts() {
+        function updateCurrency() {
+            const currency = document.getElementById('currency').value;
+            const laborRateInput = document.getElementById('laborRate');
+            const currencyUnitLabels = document.querySelectorAll('.currency-unit');
             const conduitType = document.getElementById('conduitType').value;
-            const unitCostField = document.getElementById('pipeCostPerUnit');
             const unit = currentUnitSystem === 'metric' ? 'pipe_cost_per_meter' : 'pipe_cost_per_foot';
-            unitCostField.value = materials[conduitType][unit].toFixed(2);
+            const pipeCostField = document.getElementById('pipeCostPerUnit');
+            const couplingsCostField = document.getElementById('couplingsUnitCost');
+            const elbowsCostField = document.getElementById('elbowsUnitCost');
+            const connectorsCostField = document.getElementById('connectorsUnitCost');
+
+            if (currency === 'PHP') {
+                laborRateInput.value = 250; // Default PHP labor rate
+                currencyUnitLabels.forEach(label => label.textContent = 'PHP/hour');
+                pipeCostField.value = (materials[conduitType][unit] / PHP_TO_USD).toFixed(2);
+                couplingsCostField.value = (materials[conduitType].coupling / PHP_TO_USD).toFixed(2);
+                elbowsCostField.value = (materials[conduitType].elbow_90 / PHP_TO_USD).toFixed(2);
+                connectorsCostField.value = (materials[conduitType].connector / PHP_TO_USD).toFixed(2);
+            } else {
+                laborRateInput.value = 45; // Default USD labor rate
+                currencyUnitLabels.forEach(label => label.textContent = `${currency}/hour`);
+                pipeCostField.value = materials[conduitType][unit].toFixed(2);
+                couplingsCostField.value = materials[conduitType].coupling.toFixed(2);
+                elbowsCostField.value = materials[conduitType].elbow_90.toFixed(2);
+                connectorsCostField.value = materials[conduitType].connector.toFixed(2);
+            }
         }
 
         function convertUnits(newUnit) {
@@ -812,6 +838,15 @@
             const pipeLength = document.getElementById('pipeLength');
             pipeLength.value = safeNumber(pipeLength.value) * factor;
             updateConduitCosts();
+        }
+
+        function updateConduitCosts() {
+            const conduitType = document.getElementById('conduitType').value;
+            const currency = document.getElementById('currency').value;
+            const unitCostField = document.getElementById('pipeCostPerUnit');
+            const unit = currentUnitSystem === 'metric' ? 'pipe_cost_per_meter' : 'pipe_cost_per_foot';
+            const cost = currency === 'PHP' ? (materials[conduitType][unit] / PHP_TO_USD) : materials[conduitType][unit];
+            unitCostField.value = cost.toFixed(2);
         }
 
         function setupInputValidation() {
@@ -849,7 +884,7 @@
             if (!validateInputs()) return;
 
             const conduitType = document.getElementById('conduitType').value;
-            const laborRate = safeNumber(document.getElementById('laborRate').value, 45);
+            const laborRate = safeNumber(document.getElementById('laborRate').value, 250);
             const overheadRate = safeNumber(document.getElementById('overheadRate').value, 15) / 100;
             const profitMarginRate = safeNumber(document.getElementById('profitMarginRate').value, 20) / 100;
             const currency = document.getElementById('currency').value;
@@ -1063,7 +1098,7 @@
         }
 
         function addCrewSizingSummary(totalLaborHours, currency) {
-            const laborRate = safeNumber(document.getElementById('laborRate').value, 45);
+            const laborRate = safeNumber(document.getElementById('laborRate').value, 250);
             const HOURS_PER_DAY = 8;
             const DAYS_PER_WEEK = 5;
             const totalLaborDays = totalLaborHours / HOURS_PER_DAY;
@@ -1134,7 +1169,7 @@
                 document.querySelectorAll('input').forEach(input => {
                     if (input.type === 'number') {
                         input.value = input.getAttribute('value') || '0';
-                    } else if (input.type === 'text') {
+                    } else if (input$type === 'text') {
                         input.value = "";
                     } else if (input.type === 'date') {
                         input.valueAsDate = new Date();
@@ -1147,6 +1182,7 @@
                 document.querySelector('.unit-btn[data-unit="imperial"]').classList.add('active');
                 currentUnitSystem = 'imperial';
                 updateUnitLabels();
+                updateCurrency();
                 resultsPlaceholder.classList.remove('hidden');
                 resultsContent.classList.add('hidden');
                 crewSizingSection.classList.add('hidden');
@@ -1156,6 +1192,7 @@
 
         function getPdfCurrencyPrefix(code) {
             switch (code) {
+                case 'PHP': return '₱';
                 case 'USD': return '$';
                 case 'EUR': return '€';
                 case 'JPY': return '¥';
@@ -1572,7 +1609,7 @@
 
         function getSelectedCurrency() {
             const el = document.getElementById('currency');
-            return el ? el.value : 'USD';
+            return el ? el.value : 'PHP';
         }
     </script>
 </body>
