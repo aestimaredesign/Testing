@@ -87,6 +87,11 @@
             color: white;
         }
 
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 0.85rem;
+        }
+
         .btn:hover {
             opacity: 0.9;
             transform: translateY(-1px);
@@ -128,6 +133,14 @@
         .input-row {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: end;
+        }
+
+        .input-row-dynamic {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr auto;
             gap: 10px;
             margin-bottom: 10px;
             align-items: end;
@@ -188,6 +201,9 @@
             font-weight: 600;
             margin-bottom: 10px;
             color: var(--primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .bill-of-quantity-table {
@@ -352,6 +368,32 @@
         .hidden {
             display: none;
         }
+
+        .remove-btn {
+            background: var(--danger);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 5px 10px;
+            font-size: 0.85rem;
+        }
+
+        .remove-btn:hover {
+            opacity: 0.9;
+        }
+
+        .input-error {
+            border-color: var(--danger) !important;
+            box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.2) !important;
+        }
+
+        .error-message {
+            color: var(--danger);
+            font-size: 0.75rem;
+            margin-top: 3px;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -374,6 +416,7 @@
                 <div class="input-group">
                     <label>Project Name</label>
                     <input type="text" id="projectName" placeholder="Enter project name">
+                    <div class="error-message" id="projectNameError">Project name is required</div>
                 </div>
 
                 <div class="input-group">
@@ -399,8 +442,8 @@
                 <div class="input-group">
                     <label>Unit System</label>
                     <div class="unit-toggle">
-                        <div class="unit-btn active" data-unit="imperial">Imperial (US)</div>
-                        <div class="unit-btn" data-unit="metric">Metric (SI)</div>
+                        <div class="unit-btn active" data-unit="metric">Metric (SI)</div>
+                        <div class="unit-btn" data-unit="imperial">Imperial (US)</div>
                     </div>
                 </div>
 
@@ -415,23 +458,26 @@
                         <div class="input-row">
                             <div class="input-group">
                                 <label class="tooltip">Labor Rate (per hour)<span class="tooltiptext">Hourly rate for electrician labor</span></label>
-                                <input type="number" id="laborRate" value="250" step="0.01">
+                                <input type="number" id="laborRate" value="250" step="0.01" min="0">
+                                <div class="error-message" id="laborRateError">Labor rate must be positive</div>
                                 <div class="unit-label currency-unit">PHP/hour</div>
                             </div>
                             <div class="input-group">
                                 <label class="tooltip">Overhead Rate (%)<span class="tooltiptext">Percentage for general overhead costs</span></label>
-                                <input type="number" id="overheadRate" value="15" step="0.1">
+                                <input type="number" id="overheadRate" value="15" step="0.1" min="0" max="100">
+                                <div class="error-message" id="overheadRateError">Overhead rate must be between 0-100%</div>
                             </div>
                             <div class="input-group">
                                 <label class="tooltip">Profit Margin (%)<span class="tooltiptext">Desired profit margin percentage</span></label>
-                                <input type="number" id="profitMarginRate" value="20" step="0.1">
+                                <input type="number" id="profitMarginRate" value="20" step="0.1" min="0" max="100">
+                                <div class="error-message" id="profitMarginError">Profit margin must be between 0-100%</div>
                             </div>
                         </div>
                         <div class="input-row">
                             <div class="input-group">
                                 <label>Currency</label>
                                 <select id="currency">
-                                    <option value="PHP">Philippine Peso (₱)</option>
+                                    <option value="PHP">Philippine Peso (PHP)</option>
                                     <option value="USD">US Dollar ($)</option>
                                     <option value="EUR">Euro (€)</option>
                                     <option value="JPY">Japanese Yen (¥)</option>
@@ -441,96 +487,61 @@
                     </div>
 
                     <div class="tab-content" id="pipes-tab" role="tabpanel" aria-labelledby="tab-pipes">
+                        <div class="input-group">
+                            <label>Conduit Type</label>
+                            <select id="conduitType">
+                                <option value="PVC">PVC</option>
+                                <option value="EMT">EMT</option>
+                            </select>
+                        </div>
+
                         <div class="work-item">
-                            <div class="work-item-title">Conduit Pipes</div>
-                            <div class="input-row">
-                                <div class="input-group">
-                                    <label>Conduit Type</label>
-                                    <select id="conduitType">
-                                        <option value="PVC">PVC</option>
-                                        <option value="EMT">EMT</option>
-                                    </select>
-                                </div>
-                                <div class="input-group">
-                                    <label>Length</label>
-                                    <input type="number" id="pipeLength" value="500" min="0" step="0.1">
-                                    <div class="unit-label length-unit">feet</div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Cost per Unit</label>
-                                    <input type="number" id="pipeCostPerUnit" value="2.50" step="0.01">
-                                    <div class="unit-label">PHP/<span class="length-unit-short">ft</span></div>
-                                </div>
+                            <div class="work-item-title">
+                                <span>Pipes</span>
+                                <button class="btn btn-primary btn-sm" id="addPipeBtn">Add Pipe</button>
                             </div>
-                            <div class="input-row">
-                                <div class="input-group">
-                                    <label>Labor Hours per 100<span class="length-unit-short">ft</span></label>
-                                    <input type="number" id="pipeLaborHours" value="2.5" step="0.1">
-                                    <div class="unit-label">hours</div>
-                                </div>
+                            <div id="pipesContainer">
+                                <!-- Dynamic pipes will be added here -->
                             </div>
                         </div>
 
                         <div class="work-item">
-                            <div class="work-item-title">Couplings</div>
-                            <div class="input-row">
-                                <div class="input-group">
-                                    <label>Quantity</label>
-                                    <input type="number" id="couplingsQty" value="20" min="0">
-                                    <div class="unit-label">pcs</div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Unit Cost</label>
-                                    <input type="number" id="couplingsUnitCost" value="1.20" step="0.01">
-                                    <div class="unit-label">PHP</div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Labor Hours per Unit</label>
-                                    <input type="number" id="couplingsLaborHours" value="0.1" step="0.01">
-                                    <div class="unit-label">hours</div>
-                                </div>
+                            <div class="work-item-title">
+                                <span>Couplings</span>
+                                <button class="btn btn-primary btn-sm" id="addCouplingBtn">Add Coupling</button>
+                            </div>
+                            <div id="couplingsContainer">
+                                <!-- Dynamic couplings will be added here -->
                             </div>
                         </div>
 
                         <div class="work-item">
-                            <div class="work-item-title">90-Degree Elbows</div>
-                            <div class="input-row">
-                                <div class="input-group">
-                                    <label>Quantity</label>
-                                    <input type="number" id="elbowsQty" value="10" min="0">
-                                    <div class="unit-label">pcs</div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Unit Cost</label>
-                                    <input type="number" id="elbowsUnitCost" value="2.50" step="0.01">
-                                    <div class="unit-label">PHP</div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Labor Hours per Unit</label>
-                                    <input type="number" id="elbowsLaborHours" value="0.1" step="0.01">
-                                    <div class="unit-label">hours</div>
-                                </div>
+                            <div class="work-item-title">
+                                <span>Elbows</span>
+                                <button class="btn btn-primary btn-sm" id="addElbowBtn">Add Elbow</button>
+                            </div>
+                            <div id="elbowsContainer">
+                                <!-- Dynamic elbows will be added here -->
                             </div>
                         </div>
 
                         <div class="work-item">
-                            <div class="work-item-title">Connectors</div>
-                            <div class="input-row">
-                                <div class="input-group">
-                                    <label>Quantity</label>
-                                    <input type="number" id="connectorsQty" value="15" min="0">
-                                    <div class="unit-label">pcs</div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Unit Cost</label>
-                                    <input type="number" id="connectorsUnitCost" value="1.80" step="0.01">
-                                    <div class="unit-label">PHP</div>
-                                </div>
-                                <div class="input-group">
-                                    <label>Labor Hours per Unit</label>
-                                    <input type="number" id="connectorsLaborHours" value="0.1" step="0.01">
-                                    <div class="unit-label">hours</div>
-                                </div>
+                            <div class="work-item-title">
+                                <span>Connectors</span>
+                                <button class="btn btn-primary btn-sm" id="addConnectorBtn">Add Connector</button>
+                            </div>
+                            <div id="connectorsContainer">
+                                <!-- Dynamic connectors will be added here -->
+                            </div>
+                        </div>
+
+                        <div class="work-item">
+                            <div class="work-item-title">
+                                <span>Locknuts & Bushings</span>
+                                <button class="btn btn-primary btn-sm" id="addLocknutBtn">Add Locknut/Bushing</button>
+                            </div>
+                            <div id="locknutsContainer">
+                                <!-- Dynamic locknuts will be added here -->
                             </div>
                         </div>
                     </div>
@@ -542,7 +553,7 @@
                                 <p><span class="step-number">1</span> <strong>Project Information:</strong> Enter project details like name, client, location, and date.</p>
                                 <p><span class="step-number">2</span> <strong>Unit System:</strong> Choose between Imperial (feet) or Metric (meters) units.</p>
                                 <p><span class="step-number">3</span> <strong>General Parameters:</strong> Set labor rate, overhead, profit margin, and currency.</p>
-                                <p><span class="step-number">4</span> <strong>Pipes & Fittings:</strong> Input conduit type, pipe length, and quantities/costs for fittings.</p>
+                                <p><span class="step-number">4</span> <strong>Pipes & Fittings:</strong> Select conduit type and add items for each category with specific sizes.</p>
                                 <p><span class="step-number">5</span> <strong>Calculate:</strong> Click "Calculate" to generate the cost breakdown and labor requirements.</p>
                                 <p><span class="step-number">6</span> <strong>Export:</strong> Export results as PDF or Excel for professional use.</p>
                             </div>
@@ -564,27 +575,21 @@
                         </div>
 
                         <div class="help-section">
-                            <h3>Reference Costs (2025 Averages, USD)</h3>
+                            <h3>Standard Sizes</h3>
                             <div class="reference-box">
-                                <h4>PVC Conduit (1"):</h4>
+                                <h4>PVC Conduit Sizes:</h4>
                                 <ul>
-                                    <li>Cost: $2.50/ft (₱140/m)</li>
-                                    <li>Couplings: $1.20/unit (₱67/unit)</li>
-                                    <li>90-Degree Elbows: $2.50/unit (₱140/unit)</li>
-                                    <li>Connectors: $1.80/unit (₱101/unit)</li>
+                                    <li>Pipes: 20mm, 25mm, 40mm, 50mm, 75mm, 90mm, 100mm, 200mm</li>
+                                    <li>Couplings: 20mm, 25mm, 40mm, 50mm, 75mm, 90mm, 100mm</li>
+                                    <li>Elbows: 20mm, 25mm, 40mm, 50mm, 75mm, 90mm, 100mm</li>
+                                    <li>Locknuts & Bushings: 20mm, 25mm, 40mm, 50mm, 75mm, 90mm, 100mm</li>
                                 </ul>
-                                <h4>EMT Conduit (1"):</h4>
+                                <h4>EMT Conduit Sizes:</h4>
                                 <ul>
-                                    <li>Cost: $3.75/ft (₱210/m)</li>
-                                    <li>Couplings: $1.50/unit (₱84/unit)</li>
-                                    <li>90-Degree Elbows: $3.20/unit (₱179/unit)</li>
-                                    <li>Connectors: $2.10/unit (₱118/unit)</li>
-                                </ul>
-                                <h4>Labor Rates:</h4>
-                                <ul>
-                                    <li>Electrician: ₱250/hour ($4.50/hour)</li>
-                                    <li>Pipe Installation: 2.5 hours/100ft</li>
-                                    <li>Fitting Installation: 0.1 hours/unit</li>
+                                    <li>Pipes: 15mm, 20mm, 25mm, 40mm, 50mm</li>
+                                    <li>Couplings: 15mm, 20mm, 25mm, 40mm, 50mm</li>
+                                    <li>Connectors: 15mm, 20mm, 25mm, 40mm, 50mm</li>
+                                    <li>Locknuts & Bushings: 15mm, 20mm, 25mm, 40mm, 50mm</li>
                                 </ul>
                             </div>
                         </div>
@@ -670,26 +675,99 @@
 
     <script>
         // Global variables
-        let currentUnitSystem = 'imperial';
+        let currentUnitSystem = 'metric'; // Changed to metric as default
         let projectData = {};
         const FEET_PER_METER = 3.28084;
-        const PHP_TO_USD = 0.018; // Approximate 2025 exchange rate: 1 PHP ≈ 0.018 USD
+        const PHP_TO_USD = 0.018;
+        const USD_TO_EUR = 0.85;
+        const USD_TO_JPY = 110;
 
         // Material price database (USD and PHP, 2025 averages)
         const materials = {
             PVC: {
-                pipe_cost_per_foot: 2.50,
-                pipe_cost_per_meter: 8.20,
-                coupling: 1.20,
-                elbow_90: 2.50,
-                connector: 1.80
+                pipes: {
+                    '20mm': { cost_per_foot: 1.20, cost_per_meter: 3.94, labor_hours_per_100ft: 2.0 },
+                    '25mm': { cost_per_foot: 1.50, cost_per_meter: 4.92, labor_hours_per_100ft: 2.2 },
+                    '40mm': { cost_per_foot: 2.00, cost_per_meter: 6.56, labor_hours_per_100ft: 2.5 },
+                    '50mm': { cost_per_foot: 2.50, cost_per_meter: 8.20, labor_hours_per_100ft: 2.8 },
+                    '75mm': { cost_per_foot: 3.50, cost_per_meter: 11.48, labor_hours_per_100ft: 3.2 },
+                    '90mm': { cost_per_foot: 4.50, cost_per_meter: 14.76, labor_hours_per_100ft: 3.5 },
+                    '100mm': { cost_per_foot: 5.00, cost_per_meter: 16.40, labor_hours_per_100ft: 3.8 },
+                    '200mm': { cost_per_foot: 8.00, cost_per_meter: 26.24, labor_hours_per_100ft: 5.0 }
+                },
+                couplings: {
+                    '20mm': { cost: 0.80, labor_hours: 0.08 },
+                    '25mm': { cost: 1.00, labor_hours: 0.08 },
+                    '40mm': { cost: 1.20, labor_hours: 0.09 },
+                    '50mm': { cost: 1.50, labor_hours: 0.09 },
+                    '75mm': { cost: 2.00, labor_hours: 0.10 },
+                    '90mm': { cost: 2.50, labor_hours: 0.10 },
+                    '100mm': { cost: 3.00, labor_hours: 0.11 }
+                },
+                elbows: {
+                    '20mm': { cost: 1.50, labor_hours: 0.10 },
+                    '25mm': { cost: 1.80, labor_hours: 0.10 },
+                    '40mm': { cost: 2.20, labor_hours: 0.11 },
+                    '50mm': { cost: 2.50, labor_hours: 0.11 },
+                    '75mm': { cost: 3.50, labor_hours: 0.12 },
+                    '90mm': { cost: 4.50, labor_hours: 0.12 },
+                    '100mm': { cost: 5.00, labor_hours: 0.13 }
+                },
+                connectors: {
+                    '20mm': { cost: 1.20, labor_hours: 0.09 },
+                    '25mm': { cost: 1.40, labor_hours: 0.09 },
+                    '40mm': { cost: 1.60, labor_hours: 0.10 },
+                    '50mm': { cost: 1.80, labor_hours: 0.10 },
+                    '75mm': { cost: 2.20, labor_hours: 0.11 },
+                    '90mm': { cost: 2.60, labor_hours: 0.11 },
+                    '100mm': { cost: 3.00, labor_hours: 0.12 }
+                },
+                locknuts: {
+                    '20mm': { cost: 0.50, labor_hours: 0.05 },
+                    '25mm': { cost: 0.60, labor_hours: 0.05 },
+                    '40mm': { cost: 0.70, labor_hours: 0.06 },
+                    '50mm': { cost: 0.80, labor_hours: 0.06 },
+                    '75mm': { cost: 1.00, labor_hours: 0.07 },
+                    '90mm': { cost: 1.20, labor_hours: 0.07 },
+                    '100mm': { cost: 1.50, labor_hours: 0.08 }
+                }
             },
             EMT: {
-                pipe_cost_per_foot: 3.75,
-                pipe_cost_per_meter: 12.30,
-                coupling: 1.50,
-                elbow_90: 3.20,
-                connector: 2.10
+                pipes: {
+                    '15mm': { cost_per_foot: 1.80, cost_per_meter: 5.90, labor_hours_per_100ft: 2.2 },
+                    '20mm': { cost_per_foot: 2.20, cost_per_meter: 7.22, labor_hours_per_100ft: 2.4 },
+                    '25mm': { cost_per_foot: 2.80, cost_per_meter: 9.18, labor_hours_per_100ft: 2.6 },
+                    '40mm': { cost_per_foot: 3.75, cost_per_meter: 12.30, labor_hours_per_100ft: 2.8 },
+                    '50mm': { cost_per_foot: 4.50, cost_per_meter: 14.76, labor_hours_per_100ft: 3.0 }
+                },
+                couplings: {
+                    '15mm': { cost: 1.20, labor_hours: 0.09 },
+                    '20mm': { cost: 1.40, labor_hours: 0.09 },
+                    '25mm': { cost: 1.60, labor_hours: 0.10 },
+                    '40mm': { cost: 1.80, labor_hours: 0.10 },
+                    '50mm': { cost: 2.00, labor_hours: 0.11 }
+                },
+                elbows: {
+                    '15mm': { cost: 1.50, labor_hours: 0.10 },
+                    '20mm': { cost: 1.70, labor_hours: 0.10 },
+                    '25mm': { cost: 1.90, labor_hours: 0.11 },
+                    '40mm': { cost: 2.10, labor_hours: 0.11 },
+                    '50mm': { cost: 2.30, labor_hours: 0.12 }
+                },
+                connectors: {
+                    '15mm': { cost: 1.50, labor_hours: 0.10 },
+                    '20mm': { cost: 1.70, labor_hours: 0.10 },
+                    '25mm': { cost: 1.90, labor_hours: 0.11 },
+                    '40mm': { cost: 2.10, labor_hours: 0.11 },
+                    '50mm': { cost: 2.30, labor_hours: 0.12 }
+                },
+                locknuts: {
+                    '15mm': { cost: 0.60, labor_hours: 0.06 },
+                    '20mm': { cost: 0.70, labor_hours: 0.06 },
+                    '25mm': { cost: 0.80, labor_hours: 0.07 },
+                    '40mm': { cost: 0.90, labor_hours: 0.07 },
+                    '50mm': { cost: 1.00, labor_hours: 0.08 }
+                }
             }
         };
 
@@ -706,11 +784,27 @@
         const resultsContent = document.getElementById('resultsContent');
         const crewSizingSection = document.getElementById('crewSizingSection');
 
+        // Add item buttons
+        const addPipeBtn = document.getElementById('addPipeBtn');
+        const addCouplingBtn = document.getElementById('addCouplingBtn');
+        const addElbowBtn = document.getElementById('addElbowBtn');
+        const addConnectorBtn = document.getElementById('addConnectorBtn');
+        const addLocknutBtn = document.getElementById('addLocknutBtn');
+
+        // Containers for dynamic items
+        const pipesContainer = document.getElementById('pipesContainer');
+        const couplingsContainer = document.getElementById('couplingsContainer');
+        const elbowsContainer = document.getElementById('elbowsContainer');
+        const connectorsContainer = document.getElementById('connectorsContainer');
+        const locknutsContainer = document.getElementById('locknutsContainer');
+
         // Initialize date to today
         document.getElementById('projectDate').valueAsDate = new Date();
 
         // Event Listeners
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded - initializing calculator');
+            
             // Unit system toggle
             unitButtons.forEach(button => {
                 button.addEventListener('click', function() {
@@ -722,6 +816,7 @@
                     this.classList.add('active');
                     currentUnitSystem = newUnit;
                     updateUnitLabels();
+                    updateConduitCosts(); // Update costs when unit changes
                 });
             });
 
@@ -738,17 +833,13 @@
                     this.setAttribute('aria-selected', 'true');
                     document.getElementById(`${tabId}-tab`).classList.add('active');
                 });
-
-                tab.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        this.click();
-                    }
-                });
             });
 
             // Calculate button
-            calculateBtn.addEventListener('click', calculateEstimate);
+            calculateBtn.addEventListener('click', function() {
+                console.log('Calculate button clicked');
+                calculateEstimate();
+            });
 
             // Reset button
             resetBtn.addEventListener('click', resetCalculator);
@@ -757,10 +848,32 @@
             exportPdfBtn.addEventListener('click', exportToPdf);
             exportExcelBtn.addEventListener('click', exportToExcel);
 
+            // Add item buttons
+            addPipeBtn.addEventListener('click', function() { 
+                console.log('Add pipe clicked');
+                addItem('pipes'); 
+            });
+            addCouplingBtn.addEventListener('click', function() { addItem('couplings'); });
+            addElbowBtn.addEventListener('click', function() { addItem('elbows'); });
+            addConnectorBtn.addEventListener('click', function() { addItem('connectors'); });
+            addLocknutBtn.addEventListener('click', function() { addItem('locknuts'); });
+
+            // Conduit type change
+            document.getElementById('conduitType').addEventListener('change', updateConduitType);
+
             // Input validation and currency update
             setupInputValidation();
             document.getElementById('currency').addEventListener('change', updateCurrency);
-            updateCurrency(); // Initial currency setup
+            updateCurrency();
+            
+            // Add initial items
+            addItem('pipes');
+            addItem('couplings');
+            addItem('elbows');
+            addItem('connectors');
+            addItem('locknuts');
+            
+            console.log('Calculator initialized successfully');
         });
 
         // Utility functions
@@ -771,17 +884,17 @@
         }
 
         function formatNumber(num, dp = 2) {
-            if (typeof num !== 'number' || isNaN(num)) return "";
+            if (typeof num !== 'number' || isNaN(num)) return "0.00";
             const rounded = Math.round((num + Number.EPSILON) * Math.pow(10, dp)) / Math.pow(10, dp);
             return rounded.toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
         }
 
         function formatCurrency(n) {
-            if (typeof n !== 'number' || isNaN(n)) return "";
+            if (typeof n !== 'number' || isNaN(n)) return "PHP 0.00";
             const c = document.getElementById('currency').value;
             let symbol = '';
             switch (c) {
-                case 'PHP': symbol = '₱'; break;
+                case 'PHP': symbol = 'PHP'; break;
                 case 'USD': symbol = '$'; break;
                 case 'EUR': symbol = '€'; break;
                 case 'JPY': symbol = '¥'; break;
@@ -806,28 +919,16 @@
             const currency = document.getElementById('currency').value;
             const laborRateInput = document.getElementById('laborRate');
             const currencyUnitLabels = document.querySelectorAll('.currency-unit');
-            const conduitType = document.getElementById('conduitType').value;
-            const unit = currentUnitSystem === 'metric' ? 'pipe_cost_per_meter' : 'pipe_cost_per_foot';
-            const pipeCostField = document.getElementById('pipeCostPerUnit');
-            const couplingsCostField = document.getElementById('couplingsUnitCost');
-            const elbowsCostField = document.getElementById('elbowsUnitCost');
-            const connectorsCostField = document.getElementById('connectorsUnitCost');
 
             if (currency === 'PHP') {
-                laborRateInput.value = 250; // Default PHP labor rate
+                laborRateInput.value = 250;
                 currencyUnitLabels.forEach(label => label.textContent = 'PHP/hour');
-                pipeCostField.value = (materials[conduitType][unit] / PHP_TO_USD).toFixed(2);
-                couplingsCostField.value = (materials[conduitType].coupling / PHP_TO_USD).toFixed(2);
-                elbowsCostField.value = (materials[conduitType].elbow_90 / PHP_TO_USD).toFixed(2);
-                connectorsCostField.value = (materials[conduitType].connector / PHP_TO_USD).toFixed(2);
             } else {
-                laborRateInput.value = 45; // Default USD labor rate
+                laborRateInput.value = 45;
                 currencyUnitLabels.forEach(label => label.textContent = `${currency}/hour`);
-                pipeCostField.value = materials[conduitType][unit].toFixed(2);
-                couplingsCostField.value = materials[conduitType].coupling.toFixed(2);
-                elbowsCostField.value = materials[conduitType].elbow_90.toFixed(2);
-                connectorsCostField.value = materials[conduitType].connector.toFixed(2);
             }
+            
+            updateConduitCosts();
         }
 
         function convertUnits(newUnit) {
@@ -835,53 +936,316 @@
                 (newUnit === 'metric' && currentUnitSystem === 'imperial') ? 1 / FEET_PER_METER : 1;
             if (factor === 1) return;
 
-            const pipeLength = document.getElementById('pipeLength');
-            pipeLength.value = safeNumber(pipeLength.value) * factor;
+            // Convert all pipe length values
+            document.querySelectorAll('.pipe-length').forEach(input => {
+                const currentValue = safeNumber(input.value);
+                input.value = formatNumber(currentValue * factor, 2);
+            });
+            
             updateConduitCosts();
         }
 
         function updateConduitCosts() {
             const conduitType = document.getElementById('conduitType').value;
             const currency = document.getElementById('currency').value;
-            const unitCostField = document.getElementById('pipeCostPerUnit');
-            const unit = currentUnitSystem === 'metric' ? 'pipe_cost_per_meter' : 'pipe_cost_per_foot';
-            const cost = currency === 'PHP' ? (materials[conduitType][unit] / PHP_TO_USD) : materials[conduitType][unit];
-            unitCostField.value = cost.toFixed(2);
+            
+            document.querySelectorAll('.item-row').forEach(row => {
+                const type = row.dataset.type;
+                const sizeSelect = row.querySelector('.size-select');
+                const costInput = row.querySelector('.cost-input');
+                
+                if (sizeSelect && costInput) {
+                    const size = sizeSelect.value;
+                    if (size && materials[conduitType] && materials[conduitType][type] && materials[conduitType][type][size]) {
+                        const baseCost = type === 'pipes' ? 
+                            (currentUnitSystem === 'metric' ? 
+                                materials[conduitType][type][size].cost_per_meter : 
+                                materials[conduitType][type][size].cost_per_foot) :
+                            materials[conduitType][type][size].cost;
+                        
+                        const convertedCost = convertCurrency(baseCost, 'USD', currency);
+                        costInput.value = formatNumber(convertedCost, 2);
+                    }
+                }
+            });
+        }
+
+        function convertCurrency(amount, fromCurrency, toCurrency) {
+            if (fromCurrency === toCurrency) return amount;
+            
+            let usdAmount = amount;
+            if (fromCurrency === 'PHP') usdAmount = amount * PHP_TO_USD;
+            else if (fromCurrency === 'EUR') usdAmount = amount / USD_TO_EUR;
+            else if (fromCurrency === 'JPY') usdAmount = amount / USD_TO_JPY;
+            
+            if (toCurrency === 'PHP') return usdAmount / PHP_TO_USD;
+            else if (toCurrency === 'EUR') return usdAmount * USD_TO_EUR;
+            else if (toCurrency === 'JPY') return usdAmount * USD_TO_JPY;
+            else return usdAmount;
+        }
+
+        function updateConduitType() {
+            const conduitType = document.getElementById('conduitType').value;
+            
+            document.querySelectorAll('.size-select').forEach(select => {
+                const type = select.closest('.item-row').dataset.type;
+                const currentValue = select.value;
+                
+                select.innerHTML = '';
+                
+                if (materials[conduitType] && materials[conduitType][type]) {
+                    Object.keys(materials[conduitType][type]).forEach(size => {
+                        const option = document.createElement('option');
+                        option.value = size;
+                        option.textContent = size;
+                        select.appendChild(option);
+                    });
+                    
+                    if (materials[conduitType][type][currentValue]) {
+                        select.value = currentValue;
+                    } else {
+                        select.selectedIndex = 0;
+                    }
+                }
+            });
+            
+            updateConduitCosts();
         }
 
         function setupInputValidation() {
             const numberInputs = document.querySelectorAll('input[type="number"]');
             numberInputs.forEach(input => {
                 input.addEventListener('blur', function() {
-                    if (this.value < 0) {
-                        this.value = 0;
-                    }
-                    if (this.hasAttribute('min') && this.value < this.getAttribute('min')) {
-                        this.value = this.getAttribute('min');
+                    validateInput(this);
+                });
+                input.addEventListener('input', function() {
+                    if (this.classList.contains('input-error')) {
+                        this.classList.remove('input-error');
+                        const errorElement = this.nextElementSibling;
+                        if (errorElement && errorElement.classList.contains('error-message')) {
+                            errorElement.style.display = 'none';
+                        }
                     }
                 });
             });
+        }
 
-            document.getElementById('conduitType').addEventListener('change', updateConduitCosts);
+        function validateInput(input) {
+            let isValid = true;
+            let errorMessage = '';
+
+            if (!input.value || isNaN(parseFloat(input.value))) {
+                isValid = false;
+                errorMessage = 'This field is required and must be a number';
+            } else if (input.hasAttribute('min') && parseFloat(input.value) < parseFloat(input.getAttribute('min'))) {
+                isValid = false;
+                errorMessage = `Value must be at least ${input.getAttribute('min')}`;
+            } else if (input.hasAttribute('max') && parseFloat(input.value) > parseFloat(input.getAttribute('max'))) {
+                isValid = false;
+                errorMessage = `Value must be at most ${input.getAttribute('max')}`;
+            } else if (parseFloat(input.value) < 0) {
+                isValid = false;
+                errorMessage = 'Value cannot be negative';
+            }
+
+            if (!isValid) {
+                input.classList.add('input-error');
+                let errorElement = input.nextElementSibling;
+                if (errorElement && errorElement.classList.contains('error-message')) {
+                    errorElement.textContent = errorMessage;
+                    errorElement.style.display = 'block';
+                }
+            } else {
+                input.classList.remove('input-error');
+                let errorElement = input.nextElementSibling;
+                if (errorElement && errorElement.classList.contains('error-message')) {
+                    errorElement.style.display = 'none';
+                }
+            }
+
+            return isValid;
         }
 
         function validateInputs() {
             let isValid = true;
-            const requiredInputs = document.querySelectorAll('input[type="number"]');
-            requiredInputs.forEach(input => {
-                if (!input.value || isNaN(parseFloat(input.value))) {
+            
+            const projectName = document.getElementById('projectName');
+            if (!projectName.value.trim()) {
+                projectName.classList.add('input-error');
+                document.getElementById('projectNameError').style.display = 'block';
+                isValid = false;
+            } else {
+                projectName.classList.remove('input-error');
+                document.getElementById('projectNameError').style.display = 'none';
+            }
+
+            const numberInputs = document.querySelectorAll('input[type="number"]');
+            numberInputs.forEach(input => {
+                if (!validateInput(input)) {
                     isValid = false;
-                    input.style.borderColor = 'var(--danger)';
-                } else {
-                    input.style.borderColor = "";
                 }
             });
-            validationError.style.display = isValid ? 'none' : 'block';
+
+            const hasItems = document.querySelectorAll('.item-row').length > 0;
+            if (!hasItems) {
+                validationError.textContent = "Please add at least one item";
+                validationError.style.display = 'block';
+                isValid = false;
+            } else {
+                let hasValidItems = false;
+                document.querySelectorAll('.item-row').forEach(row => {
+                    const quantityInput = row.querySelector('.pipe-length') || row.querySelector('.item-quantity');
+                    if (quantityInput && safeNumber(quantityInput.value) > 0) {
+                        hasValidItems = true;
+                    }
+                });
+                
+                if (!hasValidItems) {
+                    validationError.textContent = "Please add at least one item with quantity greater than 0";
+                    validationError.style.display = 'block';
+                    isValid = false;
+                } else {
+                    validationError.style.display = 'none';
+                }
+            }
+
             return isValid;
         }
 
+        // Dynamic item management
+        function addItem(type) {
+            console.log(`Adding item: ${type}`);
+            const conduitType = document.getElementById('conduitType').value;
+            const container = document.getElementById(`${type}Container`);
+            const itemId = `${type}_${Date.now()}`;
+            
+            const sizes = materials[conduitType] && materials[conduitType][type] ? 
+                Object.keys(materials[conduitType][type]) : [];
+            
+            const sizeOptions = sizes.map(size => 
+                `<option value="${size}">${size}</option>`
+            ).join('');
+            
+            const isPipe = type === 'pipes';
+            const lengthLabel = isPipe ? 'Length' : 'Quantity';
+            const lengthUnit = isPipe ? 
+                (currentUnitSystem === 'metric' ? 'meters' : 'feet') : 
+                'pcs';
+            const costUnit = isPipe ? 
+                (currentUnitSystem === 'metric' ? 'currency/m' : 'currency/ft') : 
+                'currency';
+            
+            const itemHTML = `
+                <div class="input-row-dynamic item-row" data-type="${type}" id="${itemId}">
+                    <div class="input-group">
+                        <label>Size</label>
+                        <select class="size-select">
+                            ${sizeOptions}
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>${lengthLabel}</label>
+                        <input type="number" class="${isPipe ? 'pipe-length' : 'item-quantity'}" value="0" min="0" step="0.1">
+                        <div class="unit-label">${lengthUnit}</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Unit Cost</label>
+                        <input type="number" class="cost-input" value="0" step="0.01" min="0">
+                        <div class="unit-label">${costUnit}</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Labor Hours per Unit</label>
+                        <input type="number" class="labor-hours-input" value="0" step="0.01" min="0">
+                        <div class="unit-label">hours</div>
+                    </div>
+                    <div class="input-group">
+                        <button class="remove-btn" type="button" onclick="removeItem('${itemId}')">Remove</button>
+                    </div>
+                </div>
+            `;
+            
+            container.insertAdjacentHTML('beforeend', itemHTML);
+            
+            // Add event listeners to the new item
+            const newItem = document.getElementById(itemId);
+            const sizeSelect = newItem.querySelector('.size-select');
+            const costInput = newItem.querySelector('.cost-input');
+            const laborInput = newItem.querySelector('.labor-hours-input');
+            
+            sizeSelect.addEventListener('change', function() {
+                updateItemCost(this);
+            });
+            
+            // Set initial values
+            if (sizeSelect.value && materials[conduitType] && materials[conduitType][type] && materials[conduitType][type][sizeSelect.value]) {
+                const itemData = materials[conduitType][type][sizeSelect.value];
+                const currency = document.getElementById('currency').value;
+                
+                const baseCost = isPipe ? 
+                    (currentUnitSystem === 'metric' ? itemData.cost_per_meter : itemData.cost_per_foot) :
+                    itemData.cost;
+                
+                const convertedCost = convertCurrency(baseCost, 'USD', currency);
+                costInput.value = formatNumber(convertedCost, 2);
+                
+                if (isPipe) {
+                    laborInput.value = formatNumber(itemData.labor_hours_per_100ft / 100, 3);
+                } else {
+                    laborInput.value = formatNumber(itemData.labor_hours, 2);
+                }
+            }
+
+            const newInputs = newItem.querySelectorAll('input[type="number"]');
+            newInputs.forEach(input => {
+                input.addEventListener('blur', function() {
+                    validateInput(this);
+                });
+            });
+            
+            console.log(`Item ${itemId} added successfully`);
+        }
+
+        function removeItem(id) {
+            const element = document.getElementById(id);
+            if (element) {
+                element.remove();
+            }
+        }
+
+        function updateItemCost(selectElement) {
+            const row = selectElement.closest('.item-row');
+            const type = row.dataset.type;
+            const size = selectElement.value;
+            const conduitType = document.getElementById('conduitType').value;
+            const currency = document.getElementById('currency').value;
+            const costInput = row.querySelector('.cost-input');
+            const laborInput = row.querySelector('.labor-hours-input');
+            
+            if (size && materials[conduitType] && materials[conduitType][type] && materials[conduitType][type][size]) {
+                const itemData = materials[conduitType][type][size];
+                const isPipe = type === 'pipes';
+                
+                const baseCost = isPipe ? 
+                    (currentUnitSystem === 'metric' ? itemData.cost_per_meter : itemData.cost_per_foot) :
+                    itemData.cost;
+                
+                const convertedCost = convertCurrency(baseCost, 'USD', currency);
+                costInput.value = formatNumber(convertedCost, 2);
+                
+                if (isPipe) {
+                    laborInput.value = formatNumber(itemData.labor_hours_per_100ft / 100, 3);
+                } else {
+                    laborInput.value = formatNumber(itemData.labor_hours, 2);
+                }
+            }
+        }
+
         function calculateEstimate() {
-            if (!validateInputs()) return;
+            console.log('Starting calculation...');
+            if (!validateInputs()) {
+                console.log('Validation failed');
+                return;
+            }
 
             const conduitType = document.getElementById('conduitType').value;
             const laborRate = safeNumber(document.getElementById('laborRate').value, 250);
@@ -889,40 +1253,58 @@
             const profitMarginRate = safeNumber(document.getElementById('profitMarginRate').value, 20) / 100;
             const currency = document.getElementById('currency').value;
 
-            const workItems = [
-                {
-                    name: `${conduitType} Conduit Pipes`,
-                    quantity: safeNumber(document.getElementById('pipeLength').value, 0),
-                    unit: currentUnitSystem === 'metric' ? 'meters' : 'feet',
-                    unitCost: safeNumber(document.getElementById('pipeCostPerUnit').value, 0),
-                    laborHoursPerUnit: safeNumber(document.getElementById('pipeLaborHours').value, 0) / 100,
-                    laborHours: (safeNumber(document.getElementById('pipeLength').value, 0) * safeNumber(document.getElementById('pipeLaborHours').value, 0)) / 100
-                },
-                {
-                    name: 'Couplings',
-                    quantity: safeNumber(document.getElementById('couplingsQty').value, 0),
-                    unit: 'pcs',
-                    unitCost: safeNumber(document.getElementById('couplingsUnitCost').value, 0),
-                    laborHoursPerUnit: safeNumber(document.getElementById('couplingsLaborHours').value, 0),
-                    laborHours: safeNumber(document.getElementById('couplingsQty').value, 0) * safeNumber(document.getElementById('couplingsLaborHours').value, 0)
-                },
-                {
-                    name: '90-Degree Elbows',
-                    quantity: safeNumber(document.getElementById('elbowsQty').value, 0),
-                    unit: 'pcs',
-                    unitCost: safeNumber(document.getElementById('elbowsUnitCost').value, 0),
-                    laborHoursPerUnit: safeNumber(document.getElementById('elbowsLaborHours').value, 0),
-                    laborHours: safeNumber(document.getElementById('elbowsQty').value, 0) * safeNumber(document.getElementById('elbowsLaborHours').value, 0)
-                },
-                {
-                    name: 'Connectors',
-                    quantity: safeNumber(document.getElementById('connectorsQty').value, 0),
-                    unit: 'pcs',
-                    unitCost: safeNumber(document.getElementById('connectorsUnitCost').value, 0),
-                    laborHoursPerUnit: safeNumber(document.getElementById('connectorsLaborHours').value, 0),
-                    laborHours: safeNumber(document.getElementById('connectorsQty').value, 0) * safeNumber(document.getElementById('connectorsLaborHours').value, 0)
+            const workItems = [];
+            
+            // Process pipes
+            document.querySelectorAll('.item-row[data-type="pipes"]').forEach(row => {
+                const sizeSelect = row.querySelector('.size-select');
+                const lengthInput = row.querySelector('.pipe-length');
+                const costInput = row.querySelector('.cost-input');
+                const laborInput = row.querySelector('.labor-hours-input');
+                
+                if (sizeSelect.value && safeNumber(lengthInput.value) > 0) {
+                    workItems.push({
+                        name: `${conduitType} Pipe (${sizeSelect.value})`,
+                        quantity: safeNumber(lengthInput.value, 0),
+                        unit: currentUnitSystem === 'metric' ? 'meters' : 'feet',
+                        unitCost: safeNumber(costInput.value, 0),
+                        laborHoursPerUnit: safeNumber(laborInput.value, 0),
+                        laborHours: safeNumber(lengthInput.value, 0) * safeNumber(laborInput.value, 0)
+                    });
                 }
-            ];
+            });
+            
+            // Process other items
+            const otherTypes = ['couplings', 'elbows', 'connectors', 'locknuts'];
+            otherTypes.forEach(type => {
+                document.querySelectorAll(`.item-row[data-type="${type}"]`).forEach(row => {
+                    const sizeSelect = row.querySelector('.size-select');
+                    const quantityInput = row.querySelector('.item-quantity');
+                    const costInput = row.querySelector('.cost-input');
+                    const laborInput = row.querySelector('.labor-hours-input');
+                    
+                    if (sizeSelect.value && safeNumber(quantityInput.value) > 0) {
+                        const itemName = type === 'locknuts' ? 
+                            `${conduitType} Locknut/Bushing (${sizeSelect.value})` :
+                            `${conduitType} ${type.charAt(0).toUpperCase() + type.slice(1)} (${sizeSelect.value})`;
+                        
+                        workItems.push({
+                            name: itemName,
+                            quantity: safeNumber(quantityInput.value, 0),
+                            unit: 'pcs',
+                            unitCost: safeNumber(costInput.value, 0),
+                            laborHoursPerUnit: safeNumber(laborInput.value, 0),
+                            laborHours: safeNumber(quantityInput.value, 0) * safeNumber(laborInput.value, 0)
+                        });
+                    }
+                });
+            });
+
+            if (workItems.length === 0) {
+                validationError.textContent = "Please add at least one item with quantity greater than 0";
+                validationError.style.display = 'block';
+                return;
+            }
 
             let totalMaterialCost = 0;
             let totalLaborHours = 0;
@@ -969,10 +1351,13 @@
                 }
             };
 
+            console.log('Calculation completed successfully', projectData);
             displayResults(workItems, totalDirectCost, overheadCost, profit, totalLaborHours, currency);
         }
 
         function displayResults(workItems, totalDirectCost, overheadCost, profit, totalLaborHours, currency) {
+            console.log('Displaying results...');
+            
             document.getElementById('resultProjectName').textContent = projectData.projectName;
             document.getElementById('resultClientName').textContent = projectData.clientName || 'Not specified';
             document.getElementById('resultProjectLocation').textContent = projectData.projectLocation || 'Not specified';
@@ -1095,6 +1480,8 @@
 
             resultsPlaceholder.classList.add('hidden');
             resultsContent.classList.remove('hidden');
+            
+            console.log('Results displayed successfully');
         }
 
         function addCrewSizingSummary(totalLaborHours, currency) {
@@ -1166,43 +1553,73 @@
 
         function resetCalculator() {
             if (confirm('Are you sure you want to reset all inputs? This cannot be undone.')) {
-                document.querySelectorAll('input').forEach(input => {
-                    if (input.type === 'number') {
-                        input.value = input.getAttribute('value') || '0';
-                    } else if (input$type === 'text') {
-                        input.value = "";
-                    } else if (input.type === 'date') {
-                        input.valueAsDate = new Date();
-                    }
-                });
-                document.querySelectorAll('select').forEach(select => {
-                    select.selectedIndex = 0;
-                });
+                document.getElementById('projectName').value = '';
+                document.getElementById('clientName').value = '';
+                document.getElementById('projectLocation').value = '';
+                document.getElementById('preparedBy').value = '';
+                document.getElementById('projectDate').valueAsDate = new Date();
+                
+                document.getElementById('laborRate').value = '250';
+                document.getElementById('overheadRate').value = '15';
+                document.getElementById('profitMarginRate').value = '20';
+                document.getElementById('currency').value = 'PHP';
+                
                 unitButtons.forEach(btn => btn.classList.remove('active'));
-                document.querySelector('.unit-btn[data-unit="imperial"]').classList.add('active');
-                currentUnitSystem = 'imperial';
-                updateUnitLabels();
-                updateCurrency();
+                document.querySelector('.unit-btn[data-unit="metric"]').classList.add('active');
+                currentUnitSystem = 'metric';
+                
+                document.getElementById('conduitType').value = 'PVC';
+                
+                const containers = ['pipesContainer', 'couplingsContainer', 'elbowsContainer', 'connectorsContainer', 'locknutsContainer'];
+                containers.forEach(containerId => {
+                    document.getElementById(containerId).innerHTML = '';
+                });
+                
+                addItem('pipes');
+                addItem('couplings');
+                addItem('elbows');
+                addItem('connectors');
+                addItem('locknuts');
+                
                 resultsPlaceholder.classList.remove('hidden');
                 resultsContent.classList.add('hidden');
                 crewSizingSection.classList.add('hidden');
                 validationError.style.display = 'none';
+                
+                document.querySelectorAll('.input-error').forEach(el => {
+                    el.classList.remove('input-error');
+                });
+                document.querySelectorAll('.error-message').forEach(el => {
+                    el.style.display = 'none';
+                });
+                
+                updateUnitLabels();
+                updateCurrency();
             }
+        }
+
+        // PDF Export Functions
+        function getSelectedCurrency() {
+            const el = document.getElementById('currency');
+            return el ? el.value : 'PHP';
         }
 
         function getPdfCurrencyPrefix(code) {
             switch (code) {
-                case 'PHP': return '₱';
+                case 'PHP': return 'PHP ';
                 case 'USD': return '$';
                 case 'EUR': return '€';
                 case 'JPY': return '¥';
-                default: return code + ' ';
+                default:    return code + ' ';
             }
         }
 
         function formatNumberForPDF(num, decimals = 2) {
             if (typeof num !== 'number' || isNaN(num)) return '0';
-            return num.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+            return num.toLocaleString('en-US', {
+                minimumFractionDigits: decimals,
+                maximumFractionDigits: decimals
+            });
         }
 
         function formatCurrencyForPDF(n) {
@@ -1220,42 +1637,54 @@
 
             try {
                 const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
-                const pageWidth = doc.internal.pageSize.getWidth();
+                const pageWidth  = doc.internal.pageSize.getWidth();
                 const pageHeight = doc.internal.pageSize.getHeight();
+
+                // Reserved areas
                 const HEADER_H = 65;
                 const FOOTER_H = 30;
                 const CONTENT_MARGIN_L = 35;
                 const CONTENT_MARGIN_R = 35;
-                const BRAND = { r: 44, g: 62, b: 80 };
 
+                // Common styles
+                const BRAND = { r:44, g:62, b:80 }; // #2c3e50
+                doc.setFont('helvetica', 'normal');
+
+                // Header/ Footer drawer (runs on every page)
                 function drawHeaderFooter(data) {
-                    doc.setFillColor(240, 240, 240);
+                    // Header bar
+                    doc.setFillColor(240,240,240);
                     doc.rect(0, 0, pageWidth, HEADER_H, 'F');
-                    doc.setFont('helvetica', 'bold');
-                    doc.setFontSize(13);
-                    doc.setTextColor(BRAND.r, BRAND.g, BRAND.b);
-                    doc.text('ELECTRICAL PIPES AND FITTINGS ESTIMATE', pageWidth / 2, 24, { align: 'center' });
-                    doc.setFont('helvetica', 'normal');
-                    doc.setFontSize(8);
-                    doc.setTextColor(0);
+
+                    // Title
+                    doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(BRAND.r,BRAND.g,BRAND.b);
+                    doc.text('ELECTRICAL PIPES AND FITTINGS ESTIMATE', pageWidth/2, 24, { align: 'center' });
+
+                    // Meta
+                    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(0);
                     const projectName = document.getElementById('projectName').value || 'Unnamed Project';
-                    const clientName = document.getElementById('clientName').value || 'Not specified';
-                    const preparedBy = document.getElementById('preparedBy').value || 'Not specified';
-                    const dateStr = document.getElementById('projectDate').value || '';
+                    const clientName  = document.getElementById('clientName').value || 'Not specified';
+                    const preparedBy  = document.getElementById('preparedBy').value || 'Not specified';
+                    const dateStr     = document.getElementById('projectDate').value || '';
+
                     doc.text(`Project: ${projectName}`, CONTENT_MARGIN_L, 40);
-                    doc.text(`Client: ${clientName}`, CONTENT_MARGIN_L, 52);
-                    doc.text(`Prepared By: ${preparedBy}`, pageWidth - CONTENT_MARGIN_R, 40, { align: 'right' });
-                    doc.text(`Date: ${dateStr}`, pageWidth - CONTENT_MARGIN_R, 52, { align: 'right' });
-                    doc.setDrawColor(BRAND.r, BRAND.g, BRAND.b);
-                    doc.setLineWidth(0.5);
-                    doc.line(CONTENT_MARGIN_L, HEADER_H - 6, pageWidth - CONTENT_MARGIN_R, HEADER_H - 6);
+                    doc.text(`Client: ${clientName}`,  CONTENT_MARGIN_L, 52);
+                    doc.text(`Prepared By: ${preparedBy}`, pageWidth - CONTENT_MARGIN_R, 40, { align:'right' });
+                    doc.text(`Date: ${dateStr}`,         pageWidth - CONTENT_MARGIN_R, 52, { align:'right' });
+
+                    // Header rule
+                    doc.setDrawColor(BRAND.r,BRAND.g,BRAND.b); doc.setLineWidth(0.5);
+                    doc.line(CONTENT_MARGIN_L, HEADER_H-6, pageWidth - CONTENT_MARGIN_R, HEADER_H-6);
+
+                    // Footer
                     const pageNumber = doc.internal.getNumberOfPages();
-                    doc.setFontSize(8);
-                    doc.setTextColor(100);
-                    doc.text(`Page ${pageNumber}`, pageWidth / 2, pageHeight - 12, { align: 'center' });
+                    doc.setFontSize(8); doc.setTextColor(100);
+                    doc.text(`Page ${pageNumber}`, pageWidth/2, pageHeight - 12, { align:'center' });
                     doc.text(`Generated: ${new Date().toLocaleDateString()}`, CONTENT_MARGIN_L, pageHeight - 12);
+                    doc.text(`Conduit Type: ${document.getElementById('conduitType').value}`, pageWidth - CONTENT_MARGIN_R, pageHeight - 12, { align:'right' });
                 }
 
+                // Common AutoTable options
                 const TABLE_OPTS = {
                     margin: { left: CONTENT_MARGIN_L, right: CONTENT_MARGIN_R, top: HEADER_H + 6, bottom: FOOTER_H + 6 },
                     styles: {
@@ -1273,42 +1702,54 @@
                         fontStyle: 'bold',
                         fontSize: 7
                     },
-                    alternateRowStyles: { fillColor: [245, 245, 245] },
+                    alternateRowStyles: { fillColor: [245,245,245] },
                     didDrawPage: drawHeaderFooter
                 };
 
+                // Section helper
                 function sectionTitle(text) {
-                    doc.setFont('helvetica', 'bold');
-                    doc.setFontSize(10);
-                    doc.setTextColor(BRAND.r, BRAND.g, BRAND.b);
+                    doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(BRAND.r,BRAND.g,BRAND.b);
                     const y = (doc.lastAutoTable?.finalY || (HEADER_H + 12)) + 12;
                     doc.text(text, CONTENT_MARGIN_L, y);
                     return y + 4;
                 }
 
-                const w = { itemNo: 22, scope: 135, qty: 40, unit: 28, mat: 70, hrs: 50, lab: 70, tot: 80 };
+                // Column widths (total: 22+135+40+28+70+50+70+80 = 495pt)
+                const w = {
+                    itemNo: 22,
+                    scope: 135,  
+                    qty: 40,
+                    unit: 28,
+                    mat: 70,
+                    hrs: 50,
+                    lab: 70,
+                    tot: 80
+                };
 
-                let startY = sectionTitle('BILL OF QUANTITIES – DIRECT COSTS');
-                const directHead = [['Item No.', 'Scope of Work', 'Quantity', 'Unit', 'Material Cost', 'Labor Hours', 'Labor Cost', 'Total Cost']];
-                const directBody = [];
-                let n = 1;
+                // ===== Bill of Quantity =====
+                let startY = sectionTitle('BILL OF QUANTITY');
+                const boqHead = [['Item No.','Scope of Work','Quantity','Unit','Material Cost','Labor Hours','Labor Cost','Total Cost']];
+                const boqBody = [];
+                let itemNo = 1;
 
-                projectData.workItems.forEach(it => {
-                    if (it.quantity > 0) {
-                        directBody.push([
-                            String(n++),
-                            it.name,
-                            formatNumberForPDF(it.unit === 'pcs' ? Math.round(it.quantity) : it.quantity, it.unit === 'pcs' ? 0 : 2),
-                            it.unit,
-                            formatCurrencyForPDF(it.materialCost),
-                            formatNumberForPDF(it.laborHours, 1),
-                            formatCurrencyForPDF(it.laborCost),
-                            formatCurrencyForPDF(it.totalCost)
+                // Add work items
+                projectData.workItems.forEach(item => {
+                    if (item.quantity > 0) {
+                        boqBody.push([
+                            String(itemNo++),
+                            item.name,
+                            formatNumberForPDF(item.unit === 'pcs' ? Math.round(item.quantity) : item.quantity, item.unit === 'pcs' ? 0 : 2),
+                            item.unit,
+                            formatCurrencyForPDF(item.materialCost),
+                            formatNumberForPDF(item.laborHours, 1),
+                            formatCurrencyForPDF(item.laborCost),
+                            formatCurrencyForPDF(item.totalCost)
                         ]);
                     }
                 });
 
-                directBody.push([
+                // Add total direct costs row
+                boqBody.push([
                     '', 'TOTAL DIRECT COSTS', '', '',
                     formatCurrencyForPDF(projectData.totals.totalMaterialCost),
                     formatNumberForPDF(projectData.totals.totalLaborHours, 1),
@@ -1319,82 +1760,95 @@
                 doc.autoTable({
                     ...TABLE_OPTS,
                     startY,
-                    head: directHead,
-                    body: directBody,
+                    head: boqHead,
+                    body: boqBody,
                     columnStyles: {
-                        0: { cellWidth: w.itemNo, halign: 'center' },
-                        1: { cellWidth: w.scope, cellPadding: 2 },
-                        2: { cellWidth: w.qty, halign: 'right' },
-                        3: { cellWidth: w.unit, halign: 'center' },
-                        4: { cellWidth: w.mat, halign: 'right' },
-                        5: { cellWidth: w.hrs, halign: 'right' },
-                        6: { cellWidth: w.lab, halign: 'right' },
-                        7: { cellWidth: w.tot, halign: 'right' }
+                        0:{ cellWidth: w.itemNo, halign:'center' },
+                        1:{ cellWidth: w.scope, cellPadding: 2 },
+                        2:{ cellWidth: w.qty, halign:'right' },
+                        3:{ cellWidth: w.unit, halign:'center' },
+                        4:{ cellWidth: w.mat, halign:'right' },
+                        5:{ cellWidth: w.hrs, halign:'right' },
+                        6:{ cellWidth: w.lab, halign:'right' },
+                        7:{ cellWidth: w.tot, halign:'right' }
                     },
                     didParseCell(data) {
-                        if (data.section === 'body' && data.row.index === directBody.length - 1) {
+                        // Bold last row (TOTAL)
+                        if (data.section === 'body' && data.row.index === boqBody.length - 1) {
                             data.cell.styles.fontStyle = 'bold';
+                        }
+                        // Ensure text fits in scope column
+                        if (data.column.index === 1 && data.cell.raw.length > 50) {
+                            data.cell.styles.fontSize = 6.5;
                         }
                     }
                 });
 
+                // ===== Indirect Costs & Markup =====
                 startY = sectionTitle('INDIRECT COSTS & MARKUP');
-                const iBody = [];
-                n = 1;
+                const indirectBody = [];
+                itemNo = 1;
 
-                iBody.push([
-                    String(n++),
+                // Overhead
+                indirectBody.push([
+                    String(itemNo++),
                     `Overhead (${projectData.parameters.overheadRate}%)`,
                     '1',
                     'lot',
                     formatCurrencyForPDF(projectData.totals.overheadCost),
-                    '',
-                    '',
+                    '-',
+                    '-',
                     formatCurrencyForPDF(projectData.totals.overheadCost)
                 ]);
-                iBody.push([
-                    String(n++),
+
+                // Profit Margin
+                indirectBody.push([
+                    String(itemNo++),
                     `Profit Margin (${projectData.parameters.profitMarginRate}%)`,
                     '1',
                     'lot',
                     formatCurrencyForPDF(projectData.totals.profit),
-                    '',
-                    '',
+                    '-',
+                    '-',
                     formatCurrencyForPDF(projectData.totals.profit)
                 ]);
-                iBody.push([
+
+                // Total Indirect & Markup
+                const totalIndirectMarkup = projectData.totals.overheadCost + projectData.totals.profit;
+                indirectBody.push([
                     '',
                     'TOTAL INDIRECT COSTS & MARKUP',
                     '',
                     '',
-                    formatCurrencyForPDF(projectData.totals.overheadCost + projectData.totals.profit),
-                    '',
-                    '',
-                    formatCurrencyForPDF(projectData.totals.overheadCost + projectData.totals.profit)
+                    formatCurrencyForPDF(totalIndirectMarkup),
+                    '-',
+                    '-',
+                    formatCurrencyForPDF(totalIndirectMarkup)
                 ]);
 
                 doc.autoTable({
                     ...TABLE_OPTS,
                     startY,
-                    head: [['Item No.', 'Scope of Work', 'Quantity', 'Unit', 'Material Cost', 'Labor Hours', 'Labor Cost', 'Total Cost']],
-                    body: iBody,
+                    head: [['Item No.','Scope of Work','Quantity','Unit','Material Cost','Labor Hours','Labor Cost','Total Cost']],
+                    body: indirectBody,
                     columnStyles: {
-                        0: { cellWidth: w.itemNo, halign: 'center' },
-                        1: { cellWidth: w.scope, cellPadding: 2 },
-                        2: { cellWidth: w.qty, halign: 'right' },
-                        3: { cellWidth: w.unit, halign: 'center' },
-                        4: { cellWidth: w.mat, halign: 'right' },
-                        5: { cellWidth: w.hrs, halign: 'right' },
-                        6: { cellWidth: w.lab, halign: 'right' },
-                        7: { cellWidth: w.tot, halign: 'right' }
+                        0:{ cellWidth: w.itemNo, halign:'center' },
+                        1:{ cellWidth: w.scope, cellPadding: 2 },
+                        2:{ cellWidth: w.qty, halign:'right' },
+                        3:{ cellWidth: w.unit, halign:'center' },
+                        4:{ cellWidth: w.mat, halign:'right' },
+                        5:{ cellWidth: w.hrs, halign:'right' },
+                        6:{ cellWidth: w.lab, halign:'right' },
+                        7:{ cellWidth: w.tot, halign:'right' }
                     },
                     didParseCell(data) {
-                        if (data.section === 'body' && data.row.index === iBody.length - 1) {
+                        if (data.section === 'body' && data.row.index === indirectBody.length - 1) {
                             data.cell.styles.fontStyle = 'bold';
                         }
                     }
                 });
 
+                // ===== Summary =====
                 startY = sectionTitle('SUMMARY');
                 const summaryBody = [
                     [
@@ -1406,14 +1860,14 @@
                     ],
                     [
                         'TOTAL INDIRECT COSTS & MARKUP',
-                        formatCurrencyForPDF(projectData.totals.overheadCost + projectData.totals.profit),
+                        formatCurrencyForPDF(totalIndirectMarkup),
                         '',
                         '',
-                        formatCurrencyForPDF(projectData.totals.overheadCost + projectData.totals.profit)
+                        formatCurrencyForPDF(totalIndirectMarkup)
                     ],
                     [
                         'GRAND TOTAL',
-                        formatCurrencyForPDF(projectData.totals.totalMaterialCost + projectData.totals.overheadCost + projectData.totals.profit),
+                        formatCurrencyForPDF(projectData.totals.totalMaterialCost + totalIndirectMarkup),
                         formatNumberForPDF(projectData.totals.totalLaborHours, 1),
                         formatCurrencyForPDF(projectData.totals.totalLaborCost),
                         formatCurrencyForPDF(projectData.totals.finalPrice)
@@ -1423,14 +1877,14 @@
                 doc.autoTable({
                     ...TABLE_OPTS,
                     startY,
-                    head: [['Category', 'Material Cost', 'Labor Hours', 'Labor Cost', 'Total Cost']],
+                    head: [['Category','Material Cost','Labor Hours','Labor Cost','Total Cost']],
                     body: summaryBody,
                     columnStyles: {
-                        0: { cellWidth: w.scope + w.itemNo + 20 },
-                        1: { cellWidth: w.mat, halign: 'right' },
-                        2: { cellWidth: w.hrs, halign: 'right' },
-                        3: { cellWidth: w.lab, halign: 'right' },
-                        4: { cellWidth: w.tot, halign: 'right' }
+                        0:{ cellWidth: w.scope + w.itemNo + 20 }, // Wider for categories
+                        1:{ cellWidth: w.mat, halign:'right' },
+                        2:{ cellWidth: w.hrs, halign:'right' },
+                        3:{ cellWidth: w.lab, halign:'right' },
+                        4:{ cellWidth: w.tot, halign:'right' }
                     },
                     didParseCell(data) {
                         if (data.section === 'body' && data.row.index === summaryBody.length - 1) {
@@ -1441,6 +1895,7 @@
 
                 const fileName = (projectData.projectName || 'estimate').replace(/[^a-z0-9]/gi, '_') + '_pipes_fittings_estimate.pdf';
                 doc.save(fileName);
+
             } catch (e) {
                 console.error('PDF Generation Error:', e);
                 alert('Error generating PDF: ' + e.message);
@@ -1448,24 +1903,33 @@
         }
 
         function exportToExcel() {
-            if (!projectData.totals) {
+            if (!projectData?.totals) {
                 alert('No results to export. Please calculate an estimate first.');
                 return;
             }
 
             try {
+                // Create workbook
                 const wb = XLSX.utils.book_new();
+
+                // Main Data Sheet
                 const mainData = [
+                    // Project Information
                     ['Project:', projectData.projectName || ''],
                     ['Client:', projectData.clientName || ''],
                     ['Location:', projectData.projectLocation || ''],
                     ['Prepared By:', projectData.preparedBy || ''],
                     ['Date:', projectData.projectDate || ''],
-                    [],
-                    ['Item No.', 'Scope of Work', 'Quantity', 'Unit', 'Material Cost', 'Labor Hours', 'Labor Cost', 'Total Cost']
+                    ['Conduit Type:', document.getElementById('conduitType').value],
+                    [], // Empty row
+                    
+                    // Bill of Quantity Header
+                    ['Item No.', 'Scope of Work', 'Quantity', 'Unit', 'Material Cost', 'Labor Hours', 'Labor Cost', 'Total Cost'],
                 ];
 
                 let itemNo = 1;
+
+                // Bill of Quantity Items
                 projectData.workItems.forEach(item => {
                     if (item.quantity > 0) {
                         mainData.push([
@@ -1481,17 +1945,24 @@
                     }
                 });
 
+                // Total Direct Costs
                 mainData.push([
-                    "", "TOTAL DIRECT COSTS", "", "",
+                    "",
+                    "TOTAL DIRECT COSTS",
+                    "",
+                    "",
                     projectData.totals.totalMaterialCost,
                     projectData.totals.totalLaborHours,
                     projectData.totals.totalLaborCost,
                     projectData.totals.totalDirectCost
                 ]);
 
-                mainData.push([]);
+                mainData.push([]); // Empty row
+
+                // Indirect Costs & Markup Header
                 mainData.push(['Item No.', 'Scope of Work', 'Quantity', 'Unit', 'Material Cost', 'Labor Hours', 'Labor Cost', 'Total Cost']);
 
+                // Overhead
                 mainData.push([
                     itemNo++,
                     `Overhead (${projectData.parameters.overheadRate}%)`,
@@ -1503,6 +1974,7 @@
                     projectData.totals.overheadCost
                 ]);
 
+                // Profit Margin
                 mainData.push([
                     itemNo++,
                     `Profit Margin (${projectData.parameters.profitMarginRate}%)`,
@@ -1514,43 +1986,61 @@
                     projectData.totals.profit
                 ]);
 
+                // Total Indirect & Markup
+                const totalIndirectMarkup = projectData.totals.overheadCost + projectData.totals.profit;
                 mainData.push([
-                    "", "TOTAL INDIRECT COSTS & MARKUP", "", "",
-                    projectData.totals.overheadCost + projectData.totals.profit,
-                    "", "",
-                    projectData.totals.overheadCost + projectData.totals.profit
+                    "",
+                    "TOTAL INDIRECT COSTS & MARKUP",
+                    "",
+                    "",
+                    totalIndirectMarkup,
+                    "",
+                    "",
+                    totalIndirectMarkup
                 ]);
 
-                mainData.push([]);
+                mainData.push([]); // Empty row
+
+                // Summary Section
                 mainData.push(['Category', '', '', '', 'Material Cost', 'Labor Hours', 'Labor Cost', 'Total Cost']);
+                
                 mainData.push([
-                    'TOTAL DIRECT COSTS', '', '', '',
+                    'TOTAL DIRECT COSTS',
+                    '', '', '',
                     projectData.totals.totalMaterialCost,
                     projectData.totals.totalLaborHours,
                     projectData.totals.totalLaborCost,
                     projectData.totals.totalDirectCost
                 ]);
+
                 mainData.push([
-                    'TOTAL INDIRECT COSTS & MARKUP', '', '', '',
-                    projectData.totals.overheadCost + projectData.totals.profit,
+                    'TOTAL INDIRECT COSTS & MARKUP',
+                    '', '', '',
+                    totalIndirectMarkup,
                     "", "",
-                    projectData.totals.overheadCost + projectData.totals.profit
+                    totalIndirectMarkup
                 ]);
+
                 mainData.push([
-                    'GRAND TOTAL', '', '', '',
-                    projectData.totals.totalMaterialCost + projectData.totals.overheadCost + projectData.totals.profit,
+                    'GRAND TOTAL',
+                    '', '', '',
+                    projectData.totals.totalMaterialCost + totalIndirectMarkup,
                     projectData.totals.totalLaborHours,
                     projectData.totals.totalLaborCost,
                     projectData.totals.finalPrice
                 ]);
 
-                mainData.push([]);
+                mainData.push([]); // Empty row
+
+                // Labor & Crew Planning Section
                 mainData.push(['LABOR & CREW PLANNING']);
                 mainData.push(['Total Labor Hours:', projectData.totals.totalLaborHours]);
                 mainData.push(['Total Labor Cost:', projectData.totals.totalLaborCost]);
                 mainData.push(['Equivalent Work Days:', projectData.totals.totalLaborHours / 8]);
                 mainData.push([]);
+                
                 mainData.push(['Crew Size', 'Workers', 'Days Required', 'Weeks Required', 'Total Hours', 'Daily Hours', 'Notes']);
+                
                 mainData.push([
                     'Small crew',
                     2,
@@ -1560,6 +2050,7 @@
                     '8 hours/day',
                     'Basic installation crew'
                 ]);
+
                 mainData.push([
                     'Medium crew',
                     4,
@@ -1569,6 +2060,7 @@
                     '8 hours/day',
                     'Standard project crew'
                 ]);
+
                 mainData.push([
                     'Large crew',
                     6,
@@ -1580,16 +2072,21 @@
                 ]);
 
                 const wsMain = XLSX.utils.aoa_to_sheet(mainData);
-                const currencyCols = [4, 6, 7];
-                const numberCols = [2, 5];
+
+                // Apply formatting
+                const currencyCols = [4, 6, 7]; // Material Cost, Labor Cost, Total Cost columns (0-indexed)
+                const numberCols = [2, 5]; // Quantity, Labor Hours columns (0-indexed)
 
                 for (let r = 0; r < mainData.length; r++) {
+                    // Currency formatting
                     currencyCols.forEach(col => {
                         const cellRef = XLSX.utils.encode_cell({r: r, c: col});
                         if (wsMain[cellRef] && typeof wsMain[cellRef].v === 'number') {
                             wsMain[cellRef].z = '#,##0.00';
                         }
                     });
+
+                    // Number formatting
                     numberCols.forEach(col => {
                         const cellRef = XLSX.utils.encode_cell({r: r, c: col});
                         if (wsMain[cellRef] && typeof wsMain[cellRef].v === 'number') {
@@ -1598,19 +2095,18 @@
                     });
                 }
 
-                XLSX.utils.book_append_sheet(wb, wsMain, 'Pipes Fittings Estimate');
+                XLSX.utils.book_append_sheet(wb, wsMain, 'Pipes & Fittings Estimate');
+
+                // Save Excel file
                 const safeName = (projectData.projectName || 'project').replace(/[^a-z0-9]/gi, '_');
                 XLSX.writeFile(wb, `${safeName}_pipes_fittings_estimate.xlsx`);
+
             } catch (err) {
                 console.error(err);
                 alert('Error generating Excel file: ' + err.message);
             }
         }
 
-        function getSelectedCurrency() {
-            const el = document.getElementById('currency');
-            return el ? el.value : 'PHP';
-        }
     </script>
 </body>
 </html>
