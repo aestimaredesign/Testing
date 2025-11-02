@@ -520,6 +520,16 @@ input:focus, select:focus, textarea:focus {
     padding-left: 20px;
 }
 
+/* NEC Details indentation */
+.nec-details ul {
+    padding-left: 20px;
+    margin-bottom: 10px;
+}
+
+.nec-details li {
+    margin-bottom: 5px;
+}
+
 /* Procurement styles */
 .procurement-note {
     background: #e3f2fd;
@@ -874,6 +884,9 @@ input:focus, select:focus, textarea:focus {
     <span>NEC 314.16 Box Fill Calculations</span>
     </div>
     <p><strong>Standard Box Fill Calculation (NEC 2023 314.16)</strong></p>
+    <div class="procurement-note">
+    <strong>Note:</strong> NEC compliance calculations directly affect box selection and costs. Changing values here will automatically upgrade boxes to meet requirements.
+    </div>
     
     <div class="input-row">
     <div class="input-group">
@@ -916,12 +929,6 @@ input:focus, select:focus, textarea:focus {
     </div>
     <div class="input-row">
     <div class="input-group">
-    <label for="boxVolume" class="tooltip">Box Volume (cu. in.)<span class="tooltiptext">Volume of the electrical box in cubic inches</span></label>
-    <input type="number" id="boxVolume" value="18" min="0" step="0.1" aria-describedby="boxVolumeDesc">
-    <div class="unit-label">cu. in.</div>
-    <div id="boxVolumeDesc" class="sr-only">Volume of the electrical box in cubic inches</div>
-    </div>
-    <div class="input-group">
     <label for="safetyFactor" class="tooltip">Design Safety Factor (%)<span class="tooltiptext">Additional capacity for future modifications</span></label>
     <input type="number" id="safetyFactor" value="20" min="0" max="50" aria-describedby="safetyFactorDesc">
     <div class="unit-label">%</div>
@@ -931,7 +938,7 @@ input:focus, select:focus, textarea:focus {
     <div class="nec-box-fill">
     <h4>NEC Box Fill Calculation Result</h4>
     <div id="necResult" class="nec-result">Fill calculation will appear here</div>
-    <div id="necDetails"></div>
+    <div id="necDetails" class="nec-details"></div>
     </div>
     </div>
     </div>
@@ -1239,16 +1246,24 @@ input:focus, select:focus, textarea:focus {
     let projectData = {};
     let lastNecResult = null;
 
-    // Standard Box Capacities (cubic inches)
+    // Enhanced Box Capacities with NEC-driven selection
     const BOX_CAPACITIES = {
-        'Utility Box (Standard)': 18.0,
-        'Utility Box (Deep)': 22.5,
-        '4x4 Junction Box (1.5")': 21.0,
-        '4x4 Junction Box (2.125")': 30.3,
-        '4x4 Square Box (1.5")': 21.0,
-        '4x4 Square Box (2.125")': 30.3,
-        'Two Gang Box (Standard)': 30.0,
-        'Two Gang Box (Deep)': 42.0
+        'Utility Box (Standard)': { volume: 18.0, costMultiplier: 1.0, description: 'Standard Utility Box' },
+        'Utility Box (Deep)': { volume: 22.5, costMultiplier: 1.2, description: 'Deep Utility Box' },
+        '4x4 Junction Box (1.5")': { volume: 21.0, costMultiplier: 1.0, description: '4x4" Junction Box (1.5" deep)' },
+        '4x4 Junction Box (2.125")': { volume: 30.3, costMultiplier: 1.4, description: '4x4" Junction Box (2.125" deep)' },
+        '4x4 Square Box (1.5")': { volume: 21.0, costMultiplier: 1.0, description: '4x4" Square Box (1.5" deep)' },
+        '4x4 Square Box (2.125")': { volume: 30.3, costMultiplier: 1.4, description: '4x4" Square Box (2.125" deep)' },
+        'Two Gang Box (Standard)': { volume: 30.0, costMultiplier: 1.0, description: 'Two Gang Box (Standard)' },
+        'Two Gang Box (Deep)': { volume: 42.0, costMultiplier: 1.3, description: 'Two Gang Box (Deep)' }
+    };
+
+    // Box type mappings for NEC-driven selection
+    const BOX_TYPE_MAPPINGS = {
+        'Utility Box (Standard)': 'Utility Box (Deep)',
+        '4x4 Junction Box (1.5")': '4x4 Junction Box (2.125")',
+        '4x4 Square Box (1.5")': '4x4 Square Box (2.125")',
+        'Two Gang Box (Standard)': 'Two Gang Box (Deep)'
     };
 
     // Set default date to today
@@ -1349,7 +1364,6 @@ input:focus, select:focus, textarea:focus {
     const cableClamps = safeNumber(document.getElementById('cableClamps').value);
     // include pigtails
     const pigtails = document.getElementById('pigtails') ? safeNumber(document.getElementById('pigtails').value) : 0;
-    const boxVolume = safeNumber(document.getElementById('boxVolume').value);
     const safetyFactor = (document.getElementById('safetyFactor') ? safeNumber(document.getElementById('safetyFactor').value) / 100 : 0);
 
     const conductorVolumes = { 18:1.5, 16:1.75, 14:2.0, 12:2.25, 10:2.5, 8:3.0, 6:5.0 };
@@ -1369,6 +1383,14 @@ input:focus, select:focus, textarea:focus {
     const totalVolumeRequired = currentVolume + groundVolume + deviceVolume + clampVolume;
     const volumeWithSafety = totalVolumeRequired * (1 + safetyFactor);
 
+    // Find suitable box sizes
+    const suitableBoxes = Object.entries(BOX_CAPACITIES)
+        .filter(([boxName, boxData]) => boxData.volume >= volumeWithSafety)
+        .sort((a, b) => a[1].volume - b[1].volume);
+
+    const smallestSuitableBox = suitableBoxes[0];
+    const isCompliant = smallestSuitableBox != undefined;
+
     // Build detailed result object for UI + PDF audit
     const necResult = {
     conductorSize,
@@ -1384,35 +1406,47 @@ input:focus, select:focus, textarea:focus {
     clampVolume,
     totalVolumeRequired,
     volumeWithSafety,
-    boxVolume,
-    safetyFactor: safetyFactor * 100
+    safetyFactor: safetyFactor * 100,
+    requiredBoxVolume: volumeWithSafety,
+    smallestSuitableBox: smallestSuitableBox ? smallestSuitableBox[0] : null,
+    smallestSuitableBoxVolume: smallestSuitableBox ? smallestSuitableBox[1].volume : null,
+    isCompliant,
+    suitableBoxes
     };
 
-    // Render UI details
+    // Render UI details with proper indentation
     const detailsElement = document.getElementById('necDetails');
-    let detailsHTML = '<p><strong>Calculation Details:</strong></p><ul>';
+    let detailsHTML = '<p><strong>Calculation Details:</strong></p>';
+    detailsHTML += '<ul>';
     detailsHTML += `<li>Current conductors: ${currentConductors} + pigtails ${pigtails} = ${(currentConductors + pigtails)} × ${volPerConductor} cu. in. = ${formatNumber(currentVolume,2)} cu. in.</li>`;
     detailsHTML += `<li>Equipment grounds: ${groundingConductors} (counted as one) = ${formatNumber(groundVolume,2)} cu. in.</li>`;
     detailsHTML += `<li>Devices (yokes): ${devicesCount} × 2 × ${volPerConductor} = ${formatNumber(deviceVolume,2)} cu. in.</li>`;
     detailsHTML += `<li>Internal clamps: ${cableClamps} × ${volPerConductor} = ${formatNumber(clampVolume,2)} cu. in.</li>`;
-    detailsHTML += `</ul><p>Total Required: ${formatNumber(totalVolumeRequired,2)} cu. in.</p>`;
-    detailsHTML += `<p>With safety factor: ${formatNumber(volumeWithSafety,2)} cu. in.</p>`;
-    detailsHTML += `<p>Box Volume Available: ${formatNumber(boxVolume,2)} cu. in.</p>`;
+    detailsHTML += '</ul>';
+    detailsHTML += `<p><strong>Total Required:</strong> ${formatNumber(totalVolumeRequired,2)} cu. in.</p>`;
+    detailsHTML += `<p><strong>With safety factor:</strong> ${formatNumber(volumeWithSafety,2)} cu. in.</p>`;
+    
+    if (isCompliant) {
+        detailsHTML += `<p><strong>Minimum Box Required:</strong> ${smallestSuitableBox[0]} (${smallestSuitableBox[1].volume} cu. in.)</p>`;
+    } else {
+        detailsHTML += `<p><strong>Minimum Box Required:</strong> No standard boxes meet requirement. Custom box needed.</p>`;
+    }
+    
     detailsElement.innerHTML = detailsHTML;
 
     const resultElement = document.getElementById('necResult');
-    if (boxVolume <= 0) {
-    resultElement.textContent = 'Please enter a valid box volume';
+    if (volumeWithSafety <= 0) {
+    resultElement.textContent = 'Please enter valid NEC parameters';
     resultElement.className = 'nec-result nec-warning';
-    } else if (volumeWithSafety <= boxVolume) {
-    resultElement.textContent = `PASS: ${formatNumber(volumeWithSafety,2)} cu. in. required (including safety) ≤ ${formatNumber(boxVolume,2)} cu. in. available`;
+    } else if (isCompliant) {
+    resultElement.textContent = `PASS: ${formatNumber(volumeWithSafety,2)} cu. in. required (including safety). Minimum box: ${smallestSuitableBox[0]}`;
     resultElement.className = 'nec-result nec-pass';
     } else {
-    resultElement.textContent = `FAIL: ${formatNumber(volumeWithSafety,2)} cu. in. required (including safety) > ${formatNumber(boxVolume,2)} cu. in. available`;
+    resultElement.textContent = `FAIL: ${formatNumber(volumeWithSafety,2)} cu. in. required (including safety). No standard boxes meet requirement.`;
     resultElement.className = 'nec-result nec-fail';
     }
 
-    // store for export
+    // store for export and quantity calculations
     lastNecResult = necResult;
     return necResult;
     }
@@ -1424,18 +1458,45 @@ input:focus, select:focus, textarea:focus {
     document.getElementById('devicesCount').addEventListener('input', calculateNECBoxFill);
     document.getElementById('cableClamps').addEventListener('input', calculateNECBoxFill);
     document.getElementById('pigtails').addEventListener('input', calculateNECBoxFill);
-    document.getElementById('boxVolume').addEventListener('input', calculateNECBoxFill);
     document.getElementById('safetyFactor').addEventListener('input', calculateNECBoxFill);
     
     // Initial NEC calculation
     calculateNECBoxFill();
     
-    // Main calculation function
+    // Get NEC-compliant box selection and costs
+    function getNECCompliantBoxes() {
+    if (!lastNecResult) return {};
+    
+    const requiredVolume = lastNecResult.volumeWithSafety;
+    const boxUpgrades = {};
+    const boxCosts = {};
+    
+    // Check each standard box type and upgrade if necessary
+    Object.entries(BOX_CAPACITIES).forEach(([boxName, boxData]) => {
+        // If this box type doesn't meet requirements, check if there's an upgrade available
+        if (boxData.volume < requiredVolume && BOX_TYPE_MAPPINGS[boxName]) {
+            const upgradedBox = BOX_TYPE_MAPPINGS[boxName];
+            const upgradedBoxData = BOX_CAPACITIES[upgradedBox];
+            
+            if (upgradedBoxData && upgradedBoxData.volume >= requiredVolume) {
+                boxUpgrades[boxName] = upgradedBox;
+            }
+        }
+    });
+    
+    return boxUpgrades;
+    }
+    
+    // Main calculation function - NOW INTEGRATED WITH NEC COMPLIANCE
     function calculateEstimate() {
     // Validate inputs first
     if (!validateInputs()) {
     return;
     }
+
+    // Calculate NEC requirements first
+    const necResult = calculateNECBoxFill();
+    const boxUpgrades = getNECCompliantBoxes();
 
     // Get input values
     const wallArea = parseFloat(document.getElementById('wallArea').value);
@@ -1461,10 +1522,10 @@ input:focus, select:focus, textarea:focus {
     const pctWire6 = parseFloat(document.getElementById('pctWire6').value) / 100;
     const pctWire8 = parseFloat(document.getElementById('pctWire8').value) / 100;
     
-    // Get unit costs
-    const costJunc = parseFloat(document.getElementById('costJunc').value);
-    const costUtil = parseFloat(document.getElementById('costUtil').value);
-    const costSq = parseFloat(document.getElementById('costSq').value);
+    // Get base unit costs
+    const baseCostJunc = parseFloat(document.getElementById('costJunc').value);
+    const baseCostUtil = parseFloat(document.getElementById('costUtil').value);
+    const baseCostSq = parseFloat(document.getElementById('costSq').value);
     const costPull = parseFloat(document.getElementById('costPull').value);
     const costGutter = parseFloat(document.getElementById('costGutter').value);
     const costNip = parseFloat(document.getElementById('costNip').value);
@@ -1472,6 +1533,32 @@ input:focus, select:focus, textarea:focus {
     const costWire6 = parseFloat(document.getElementById('costWire6').value);
     const costWire8 = parseFloat(document.getElementById('costWire8').value);
     const costCover = parseFloat(document.getElementById('costCover').value);
+    
+    // Apply NEC-driven cost adjustments
+    let costJunc = baseCostJunc;
+    let costUtil = baseCostUtil;
+    let costSq = baseCostSq;
+    
+    let necAdjustments = [];
+    
+    // Apply NEC upgrades and cost adjustments
+    if (boxUpgrades['Utility Box (Standard)']) {
+        const upgradedBox = boxUpgrades['Utility Box (Standard)'];
+        costUtil = baseCostUtil * BOX_CAPACITIES[upgradedBox].costMultiplier;
+        necAdjustments.push(`Utility boxes upgraded to ${upgradedBox} for NEC compliance`);
+    }
+    
+    if (boxUpgrades['4x4 Junction Box (1.5")']) {
+        const upgradedBox = boxUpgrades['4x4 Junction Box (1.5")'];
+        costJunc = baseCostJunc * BOX_CAPACITIES[upgradedBox].costMultiplier;
+        necAdjustments.push(`Junction boxes upgraded to ${upgradedBox} for NEC compliance`);
+    }
+    
+    if (boxUpgrades['4x4 Square Box (1.5")']) {
+        const upgradedBox = boxUpgrades['4x4 Square Box (1.5")'];
+        costSq = baseCostSq * BOX_CAPACITIES[upgradedBox].costMultiplier;
+        necAdjustments.push(`Square boxes upgraded to ${upgradedBox} for NEC compliance`);
+    }
     
     // Calculate quantities for each box type
     const qtyJunc = Math.ceil(totalOutlets * pctJunc);
@@ -1520,6 +1607,14 @@ input:focus, select:focus, textarea:focus {
     const boqTable = document.getElementById('billOfQuantity');
     const currencySymbol = getCurrencySymbol();
     
+    // Determine box descriptions based on NEC upgrades
+    const juncDescription = boxUpgrades['4x4 Junction Box (1.5")'] ? 
+        BOX_CAPACITIES[boxUpgrades['4x4 Junction Box (1.5")']].description : '4x4" Junction Box';
+    const utilDescription = boxUpgrades['Utility Box (Standard)'] ? 
+        BOX_CAPACITIES[boxUpgrades['Utility Box (Standard)']].description : 'Standard Utility Box';
+    const sqDescription = boxUpgrades['4x4 Square Box (1.5")'] ? 
+        BOX_CAPACITIES[boxUpgrades['4x4 Square Box (1.5")']].description : '4x4" Square Box';
+    
     boqTable.innerHTML = `
     <thead>
     <tr>
@@ -1535,7 +1630,7 @@ input:focus, select:focus, textarea:focus {
     <tbody>
     <tr>
     <td>Junction Box</td>
-    <td>4x4" Junction Box</td>
+    <td>${juncDescription}</td>
     <td>${qtyJunc}</td>
     <td>pc</td>
     <td class="text-right">${formatCurrency(costJunc, currencySymbol)}</td>
@@ -1544,7 +1639,7 @@ input:focus, select:focus, textarea:focus {
     </tr>
     <tr>
     <td>Utility Box</td>
-    <td>Standard Utility Box</td>
+    <td>${utilDescription}</td>
     <td>${qtyUtil}</td>
     <td>pc</td>
     <td class="text-right">${formatCurrency(costUtil, currencySymbol)}</td>
@@ -1553,7 +1648,7 @@ input:focus, select:focus, textarea:focus {
     </tr>
     <tr>
     <td>Square Box</td>
-    <td>4" Square Box</td>
+    <td>${sqDescription}</td>
     <td>${qtySq}</td>
     <td>pc</td>
     <td class="text-right">${formatCurrency(costSq, currencySymbol)}</td>
@@ -1659,19 +1754,19 @@ input:focus, select:focus, textarea:focus {
     </thead>
     <tbody>
     <tr>
-    <td>Junction Box</td>
+    <td>${juncDescription}</td>
     <td>${qtyJunc}</td>
     <td>Carton of 10</td>
     <td>${Math.ceil(qtyJunc / 10)}</td>
     </tr>
     <tr>
-    <td>Utility Box</td>
+    <td>${utilDescription}</td>
     <td>${qtyUtil}</td>
     <td>Carton of 10</td>
     <td>${Math.ceil(qtyUtil / 10)}</td>
     </tr>
     <tr>
-    <td>Square Box</td>
+    <td>${sqDescription}</td>
     <td>${qtySq}</td>
     <td>Carton of 10</td>
     <td>${Math.ceil(qtySq / 10)}</td>
@@ -1721,8 +1816,8 @@ input:focus, select:focus, textarea:focus {
     </tbody>
     `;
 
-    // Check NEC compliance for box types
-    checkNECCompliance();
+    // Update NEC compliance summary
+    checkNECCompliance(necAdjustments);
     
     // Update currency units
     document.querySelectorAll('.currency-unit').forEach(el => {
@@ -1766,57 +1861,59 @@ input:focus, select:focus, textarea:focus {
         laborRate,
         workHours
     },
-    nec: lastNecResult
+    nec: lastNecResult,
+    boxUpgrades,
+    necAdjustments
     };
     }
     
-    // Check NEC compliance for box types
-    function checkNECCompliance() {
+    // Enhanced NEC compliance check
+    function checkNECCompliance(necAdjustments = []) {
     if (!lastNecResult) return;
     
     const requiredVolume = lastNecResult.volumeWithSafety;
     const summaryElement = document.getElementById('necComplianceSummary');
     const warningElement = document.getElementById('necComplianceWarning');
     
-    let summaryHTML = '<p><strong>NEC 314.16 Compliance Check:</strong></p>';
-    summaryHTML += `<p>Required Volume (with safety): ${formatNumber(requiredVolume, 2)} cu. in.</p>`;
-    summaryHTML += '<p><strong>Suitable Box Types:</strong></p><ul>';
+    let summaryHTML = '<p><strong>NEC 314.16 Compliance Summary:</strong></p>';
+    summaryHTML += `<p><strong>Required Volume:</strong> ${formatNumber(requiredVolume, 2)} cu. in. (with ${lastNecResult.safetyFactor}% safety factor)</p>`;
+    
+    if (lastNecResult.isCompliant) {
+        summaryHTML += `<p><strong>Status:</strong> <span style="color: #2e7d32;">COMPLIANT</span></p>`;
+        summaryHTML += `<p><strong>Minimum Box:</strong> ${lastNecResult.smallestSuitableBox} (${lastNecResult.smallestSuitableBoxVolume} cu. in.)</p>`;
+    } else {
+        summaryHTML += `<p><strong>Status:</strong> <span style="color: #c62828;">NON-COMPLIANT - Custom boxes required</span></p>`;
+    }
+    
+    if (necAdjustments.length > 0) {
+        summaryHTML += '<p><strong>Automatic Adjustments Applied:</strong></p><ul>';
+        necAdjustments.forEach(adjustment => {
+            summaryHTML += `<li>${adjustment}</li>`;
+        });
+        summaryHTML += '</ul>';
+    }
+    
+    summaryHTML += '<p><strong>All Suitable Box Types:</strong></p><ul>';
     
     let hasComplianceIssue = false;
-    let suitableBoxes = [];
     
     // Check each standard box type
-    Object.entries(BOX_CAPACITIES).forEach(([boxName, capacity]) => {
-    if (capacity >= requiredVolume) {
-        suitableBoxes.push({ name: boxName, capacity });
-        summaryHTML += `<li>${boxName}: ${capacity} cu. in. (${formatNumber(capacity - requiredVolume, 2)} cu. in. spare)</li>`;
+    Object.entries(BOX_CAPACITIES).forEach(([boxName, boxData]) => {
+    if (boxData.volume >= requiredVolume) {
+        summaryHTML += `<li>${boxName}: ${boxData.volume} cu. in. (${formatNumber(boxData.volume - requiredVolume, 2)} cu. in. spare)</li>`;
     }
     });
     
-    if (suitableBoxes.length === 0) {
-    summaryHTML += '<li>No standard boxes meet the requirement. Consider custom or oversized boxes.</li>';
+    if (lastNecResult.suitableBoxes.length === 0) {
+    summaryHTML += '<li>No standard boxes meet the requirement. Custom or oversized boxes required.</li>';
     hasComplianceIssue = true;
     }
     
     summaryHTML += '</ul>';
     
-    // Check if utility boxes (most common) would be sufficient
-    const utilityBoxCapacity = BOX_CAPACITIES['Utility Box (Standard)'];
-    const utilityBoxPercentage = parseFloat(document.getElementById('pctUtil').value) || 0;
-    
-    if (utilityBoxPercentage > 0 && requiredVolume > utilityBoxCapacity) {
-    summaryHTML += `<div class="nec-warning" style="padding: 10px; margin-top: 10px;">
-        <strong>Warning:</strong> Your distribution includes ${utilityBoxPercentage}% utility boxes, 
-        but standard utility boxes (${utilityBoxCapacity} cu. in.) may be insufficient. 
-        Consider using deep utility boxes (${BOX_CAPACITIES['Utility Box (Deep)']} cu. in.) 
-        or adjusting your distribution.
-    </div>`;
-    hasComplianceIssue = true;
-    }
-    
     summaryElement.innerHTML = summaryHTML;
     
-    if (hasComplianceIssue) {
+    if (hasComplianceIssue || !lastNecResult.isCompliant) {
     warningElement.classList.remove('hidden');
     } else {
     warningElement.classList.add('hidden');
@@ -1969,6 +2066,16 @@ input:focus, select:focus, textarea:focus {
     doc.text('Cable Clamps: ' + lastNecResult.cableClamps, 30, yPos);
     yPos += 10;
     doc.text('Volume per Conductor: ' + formatNumber(lastNecResult.volPerConductor, 2) + ' cu. in.', 30, yPos);
+    
+    // Add NEC-driven adjustments
+    if (projectData.necAdjustments && projectData.necAdjustments.length > 0) {
+        yPos += 20;
+        doc.text('NEC-Driven Adjustments:', 20, yPos);
+        projectData.necAdjustments.forEach((adjustment, index) => {
+            yPos += 10;
+            doc.text('- ' + adjustment, 30, yPos);
+        });
+    }
     }
     
     // Add labor calculation details
@@ -2044,8 +2151,18 @@ input:focus, select:focus, textarea:focus {
     ['Total Volume Required', lastNecResult ? formatNumber(lastNecResult.totalVolumeRequired, 2) + ' cu. in.' : ''],
     ['Safety Factor', lastNecResult ? lastNecResult.safetyFactor + '%' : ''],
     ['Volume with Safety', lastNecResult ? formatNumber(lastNecResult.volumeWithSafety, 2) + ' cu. in.' : ''],
-    ['Box Volume Available', lastNecResult ? formatNumber(lastNecResult.boxVolume, 2) + ' cu. in.' : '']
+    ['Minimum Required Box', lastNecResult ? (lastNecResult.smallestSuitableBox || 'Custom box required') : ''],
+    ['NEC Compliance Status', lastNecResult ? (lastNecResult.isCompliant ? 'COMPLIANT' : 'NON-COMPLIANT') : '']
     ];
+    
+    // Add NEC adjustments if any
+    if (projectData.necAdjustments && projectData.necAdjustments.length > 0) {
+    necData.push(['']);
+    necData.push(['NEC-Driven Adjustments:']);
+    projectData.necAdjustments.forEach(adjustment => {
+        necData.push([adjustment]);
+    });
+    }
     
     const necWs = XLSX.utils.aoa_to_sheet(necData);
     XLSX.utils.book_append_sheet(wb, necWs, 'NEC Compliance');
