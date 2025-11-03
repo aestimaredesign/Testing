@@ -2009,90 +2009,374 @@ input:focus, select:focus, textarea:focus {
     }
     }
     
-    // Export to PDF
-    function exportToPDF() {
+    // Enhanced PDF Export Functions
+function getSelectedCurrency() {
+    const el = document.getElementById('currency');
+    return el ? el.value : 'PHP';
+}
+
+function getPdfCurrencyPrefix(code) {
+    switch (code) {
+        case 'PHP': return 'PHP ';
+        case 'USD': return '$';
+        case 'EUR': return '€';
+        case 'JPY': return '¥';
+        default: return code + ' ';
+    }
+}
+
+function formatNumberForPDF(num, decimals = 2) {
+    if (typeof num !== 'number' || isNaN(num)) return '0';
+    return num.toLocaleString('en-US', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+    });
+}
+
+function formatCurrencyForPDF(n) {
+    if (typeof n !== 'number' || isNaN(n)) return '0.00';
+    const prefix = getPdfCurrencyPrefix(getSelectedCurrency());
+    return prefix + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function exportToPDF() {
     if (!projectData.totals) {
-    alert('No results to export. Please calculate an estimate first.');
-    return;
+        alert('No results to export. Please calculate an estimate first.');
+        return;
     }
 
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    
-    // Add title
-    doc.setFontSize(16);
-    doc.text('Professional Electrical Boxes & Covers Estimate', 20, 20);
-    
-    // Add project details
-    doc.setFontSize(12);
-    doc.text('Project: ' + projectData.projectName, 20, 40);
-    doc.text('Client: ' + projectData.clientName, 20, 50);
-    doc.text('Prepared By: ' + projectData.preparedBy, 20, 60);
-    doc.text('Date: ' + projectData.projectDate, 20, 70);
-    doc.text('Bid Number: ' + projectData.bidNumber, 20, 80);
-    
-    // Add cost summary
-    doc.text('Cost Summary:', 20, 100);
-    doc.text('Material Cost: ' + formatCurrency(projectData.totals.totalMaterialCost), 30, 110);
-    doc.text('Labor Cost: ' + formatCurrency(projectData.totals.totalLaborCost), 30, 120);
-    doc.text('Direct Cost: ' + formatCurrency(projectData.totals.directCost), 30, 130);
-    doc.text('Overhead: ' + formatCurrency(projectData.totals.overheadCost), 30, 140);
-    doc.text('Profit: ' + formatCurrency(projectData.totals.profitCost), 30, 150);
-    doc.text('Total Cost: ' + formatCurrency(projectData.totals.totalCost), 30, 160);
-    
-    // Add project summary
-    doc.text('Project Summary:', 20, 180);
-    doc.text('Total Boxes: ' + Math.round(projectData.quantities.totalOutlets), 30, 190);
-    doc.text('Total Labor Hours: ' + projectData.labor.totalLaborHours.toFixed(1), 30, 200);
-    doc.text('Project Duration: ' + (projectData.labor.totalLaborHours / projectData.labor.workHours).toFixed(1) + ' days', 30, 210);
-    
-    // Add NEC compliance details if available
-    if (lastNecResult) {
-    doc.text('NEC Compliance Details:', 20, 230);
-    doc.text('Required Volume: ' + formatNumber(lastNecResult.volumeWithSafety, 2) + ' cu. in.', 30, 240);
-    doc.text('Conductor Size: ' + lastNecResult.conductorSize + ' AWG', 30, 250);
-    doc.text('Safety Factor: ' + lastNecResult.safetyFactor + '%', 30, 260);
-    
-    // Add detailed NEC calculation
-    let yPos = 280;
-    doc.text('NEC Calculation Breakdown:', 20, yPos);
-    yPos += 10;
-    doc.text('Current Conductors: ' + lastNecResult.currentConductors + ' + Pigtails: ' + lastNecResult.pigtails, 30, yPos);
-    yPos += 10;
-    doc.text('Grounding Conductors: ' + lastNecResult.groundingConductors + ' (counted as one)', 30, yPos);
-    yPos += 10;
-    doc.text('Devices: ' + lastNecResult.devicesCount + ' × 2 volume allowance', 30, yPos);
-    yPos += 10;
-    doc.text('Cable Clamps: ' + lastNecResult.cableClamps, 30, yPos);
-    yPos += 10;
-    doc.text('Volume per Conductor: ' + formatNumber(lastNecResult.volPerConductor, 2) + ' cu. in.', 30, yPos);
-    
-    // Add NEC-driven adjustments
-    if (projectData.necAdjustments && projectData.necAdjustments.length > 0) {
-        yPos += 20;
-        doc.text('NEC-Driven Adjustments:', 20, yPos);
-        projectData.necAdjustments.forEach((adjustment, index) => {
-            yPos += 10;
-            doc.text('- ' + adjustment, 30, yPos);
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+
+        // Reserved areas
+        const HEADER_H = 65;
+        const FOOTER_H = 30;
+        const CONTENT_MARGIN_L = 35;
+        const CONTENT_MARGIN_R = 35;
+
+        // Common styles
+        const BRAND = { r: 44, g: 62, b: 80 }; // #2c3e50
+        doc.setFont('helvetica', 'normal');
+
+        // Header/Footer drawer (runs on every page)
+        function drawHeaderFooter(data) {
+            // Header bar
+            doc.setFillColor(240, 240, 240);
+            doc.rect(0, 0, pageWidth, HEADER_H, 'F');
+
+            // Title
+            doc.setFont('helvetica', 'bold'); 
+            doc.setFontSize(13);
+            doc.setTextColor(BRAND.r, BRAND.g, BRAND.b);
+            doc.text('PROFESSIONAL ELECTRICAL BOXES & COVERS ESTIMATE', pageWidth / 2, 24, { align: 'center' });
+
+            // Meta
+            doc.setFont('helvetica', 'normal'); 
+            doc.setFontSize(8); 
+            doc.setTextColor(0);
+
+            const projectName = document.getElementById('projectName').value || 'Unnamed Project';
+            const clientName = document.getElementById('clientName').value || 'Not specified';
+            const preparedBy = document.getElementById('preparedBy').value || 'Not specified';
+            const bidNumber = document.getElementById('bidNumber').value || 'Not specified';
+            const dateStr = document.getElementById('projectDate').value || '';
+
+            doc.text(`Project: ${projectName}`, CONTENT_MARGIN_L, 40);
+            doc.text(`Client: ${clientName}`, CONTENT_MARGIN_L, 52);
+            doc.text(`Bid Number: ${bidNumber}`, pageWidth - CONTENT_MARGIN_R, 40, { align: 'right' });
+            doc.text(`Prepared By: ${preparedBy}`, pageWidth - CONTENT_MARGIN_R, 52, { align: 'right' });
+
+            // Header rule
+            doc.setDrawColor(BRAND.r, BRAND.g, BRAND.b); 
+            doc.setLineWidth(0.5);
+            doc.line(CONTENT_MARGIN_L, HEADER_H - 6, pageWidth - CONTENT_MARGIN_R, HEADER_H - 6);
+
+            // Footer
+            const pageNumber = doc.internal.getNumberOfPages();
+            doc.setFontSize(8); 
+            doc.setTextColor(100);
+            doc.text(`Page ${pageNumber}`, pageWidth / 2, pageHeight - 12, { align: 'center' });
+            doc.text(`Generated: ${new Date().toLocaleDateString()}`, CONTENT_MARGIN_L, pageHeight - 12);
+            doc.text(`NEC 2023 Compliant`, pageWidth - CONTENT_MARGIN_R, pageHeight - 12, { align: 'right' });
+        }
+
+        // Common AutoTable options
+        const TABLE_OPTS = {
+            margin: { 
+                left: CONTENT_MARGIN_L, 
+                right: CONTENT_MARGIN_R, 
+                top: HEADER_H + 6, 
+                bottom: FOOTER_H + 6 
+            },
+            styles: {
+                font: 'helvetica',
+                fontSize: 7,
+                cellPadding: 2.5,
+                lineWidth: 0.25,
+                lineColor: 100,
+                overflow: 'linebreak',
+                valign: 'middle'
+            },
+            headStyles: {
+                fillColor: [BRAND.r, BRAND.g, BRAND.b],
+                textColor: 255,
+                fontStyle: 'bold',
+                fontSize: 7
+            },
+            alternateRowStyles: { fillColor: [245, 245, 245] },
+            didDrawPage: drawHeaderFooter
+        };
+
+        // Section helper
+        function sectionTitle(text) {
+            doc.setFont('helvetica', 'bold'); 
+            doc.setFontSize(10);
+            doc.setTextColor(BRAND.r, BRAND.g, BRAND.b);
+            const y = (doc.lastAutoTable?.finalY || (HEADER_H + 12)) + 12;
+            doc.text(text, CONTENT_MARGIN_L, y);
+            return y + 4;
+        }
+
+        // Column widths
+        const w = {
+            item: 80,
+            desc: 135,
+            qty: 40,
+            unit: 28,
+            unitCost: 60,
+            matCost: 70,
+            labCost: 70
+        };
+
+        // ==== Bill of Quantity ====
+        let startY = sectionTitle('BILL OF QUANTITY');
+        
+        const boqHead = [
+            ['Item', 'Description', 'Qty', 'Unit', 'Unit Cost', 'Material Cost', 'Labor Cost']
+        ];
+        
+        const boqBody = [];
+        const currencySymbol = getSelectedCurrency();
+
+        // Get data from the current table
+        const boqTable = document.getElementById('billOfQuantity');
+        const rows = boqTable.querySelectorAll('tbody tr');
+        
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 7) {
+                const rowData = [
+                    cells[0].textContent.trim(),
+                    cells[1].textContent.trim(),
+                    cells[2].textContent.trim(),
+                    cells[3].textContent.trim(),
+                    cells[4].textContent.trim(),
+                    cells[5].textContent.trim(),
+                    cells[6].textContent.trim()
+                ];
+                boqBody.push(rowData);
+            }
         });
+
+        // Add total row
+        const totalRow = boqTable.querySelector('tfoot tr');
+        if (totalRow) {
+            const totalCells = totalRow.querySelectorAll('td');
+            if (totalCells.length >= 7) {
+                boqBody.push([
+                    'TOTAL',
+                    '',
+                    '',
+                    '',
+                    '',
+                    totalCells[5].textContent.trim(),
+                    totalCells[6].textContent.trim()
+                ]);
+            }
+        }
+
+        doc.autoTable({
+            ...TABLE_OPTS,
+            startY: startY,
+            head: boqHead,
+            body: boqBody,
+            columnStyles: {
+                0: { cellWidth: w.item },
+                1: { cellWidth: w.desc, cellPadding: 2 },
+                2: { cellWidth: w.qty, halign: 'right' },
+                3: { cellWidth: w.unit, halign: 'center' },
+                4: { cellWidth: w.unitCost, halign: 'right' },
+                5: { cellWidth: w.matCost, halign: 'right' },
+                6: { cellWidth: w.labCost, halign: 'right' }
+            },
+            didParseCell: function(data) {
+                // Bold the total row
+                if (data.section === 'body' && data.row.index === boqBody.length - 1) {
+                    data.cell.styles.fontStyle = 'bold';
+                    data.cell.styles.fillColor = [240, 240, 240];
+                }
+            }
+        });
+
+        // ==== Cost Breakdown ====
+        startY = sectionTitle('COST BREAKDOWN');
+        
+        const costData = [
+            ['Material Cost', formatCurrencyForPDF(projectData.totals.totalMaterialCost)],
+            ['Labor Cost', formatCurrencyForPDF(projectData.totals.totalLaborCost)],
+            ['Direct Cost', formatCurrencyForPDF(projectData.totals.directCost)],
+            ['Overhead', formatCurrencyForPDF(projectData.totals.overheadCost)],
+            ['Profit', formatCurrencyForPDF(projectData.totals.profitCost)],
+            ['TOTAL COST', formatCurrencyForPDF(projectData.totals.totalCost)]
+        ];
+
+        doc.autoTable({
+            ...TABLE_OPTS,
+            startY: startY,
+            head: [['Category', 'Amount']],
+            body: costData,
+            columnStyles: {
+                0: { cellWidth: 200, fontStyle: 'bold' },
+                1: { cellWidth: 100, halign: 'right', fontStyle: 'bold' }
+            },
+            didParseCell: function(data) {
+                if (data.section === 'body' && data.row.index === costData.length - 1) {
+                    data.cell.styles.fillColor = [220, 240, 220];
+                    data.cell.styles.fontStyle = 'bold';
+                }
+            }
+        });
+
+        // ==== Project Summary ====
+        startY = sectionTitle('PROJECT SUMMARY');
+        
+        const summaryData = [
+            ['Total Boxes', Math.round(projectData.quantities.totalOutlets) + ' boxes'],
+            ['Total Labor Hours', formatNumberForPDF(projectData.labor.totalLaborHours, 1) + ' hours'],
+            ['Project Duration', formatNumberForPDF(projectData.labor.totalLaborHours / projectData.labor.workHours, 1) + ' days'],
+            ['Crew Size', projectData.labor.crewSize + ' workers'],
+            ['Productivity', projectData.labor.productivity + ' boxes/hour/worker'],
+            ['Labor Rate', formatCurrencyForPDF(projectData.labor.laborRate) + '/hour']
+        ];
+
+        doc.autoTable({
+            ...TABLE_OPTS,
+            startY: startY,
+            head: [['Parameter', 'Value']],
+            body: summaryData,
+            columnStyles: {
+                0: { cellWidth: 150 },
+                1: { cellWidth: 150, halign: 'right' }
+            }
+        });
+
+        // ==== NEC Compliance Details ====
+        if (lastNecResult) {
+            startY = sectionTitle('NEC 314.16 COMPLIANCE DETAILS');
+            
+            const necData = [
+                ['Conductor Size', lastNecResult.conductorSize + ' AWG'],
+                ['Current Conductors', lastNecResult.currentConductors],
+                ['Pigtails', lastNecResult.pigtails],
+                ['Grounding Conductors', lastNecResult.groundingConductors],
+                ['Devices', lastNecResult.devicesCount],
+                ['Cable Clamps', lastNecResult.cableClamps],
+                ['Volume per Conductor', formatNumberForPDF(lastNecResult.volPerConductor, 2) + ' cu. in.'],
+                ['Total Volume Required', formatNumberForPDF(lastNecResult.totalVolumeRequired, 2) + ' cu. in.'],
+                ['Safety Factor', lastNecResult.safetyFactor + '%'],
+                ['Volume with Safety', formatNumberForPDF(lastNecResult.volumeWithSafety, 2) + ' cu. in.'],
+                ['Minimum Required Box', lastNecResult.smallestSuitableBox || 'Custom box required'],
+                ['Compliance Status', lastNecResult.isCompliant ? 'COMPLIANT' : 'NON-COMPLIANT']
+            ];
+
+            // Add NEC adjustments if any
+            if (projectData.necAdjustments && projectData.necAdjustments.length > 0) {
+                necData.push(['', '']);
+                necData.push(['NEC-Driven Adjustments:', '']);
+                projectData.necAdjustments.forEach(adjustment => {
+                    necData.push(['', adjustment]);
+                });
+            }
+
+            doc.autoTable({
+                ...TABLE_OPTS,
+                startY: startY,
+                head: [['Parameter', 'Value']],
+                body: necData,
+                columnStyles: {
+                    0: { cellWidth: 180, fontStyle: 'bold' },
+                    1: { cellWidth: 120 }
+                },
+                didParseCell: function(data) {
+                    if (data.section === 'body') {
+                        // Highlight compliance status
+                        if (data.cell.raw === 'COMPLIANT') {
+                            data.cell.styles.textColor = [46, 125, 50]; // Green
+                            data.cell.styles.fontStyle = 'bold';
+                        } else if (data.cell.raw === 'NON-COMPLIANT') {
+                            data.cell.styles.textColor = [198, 40, 40]; // Red
+                            data.cell.styles.fontStyle = 'bold';
+                        }
+                        
+                        // Style adjustments section
+                        if (data.row.raw[0] === 'NEC-Driven Adjustments:') {
+                            data.cell.styles.fontStyle = 'bold';
+                            data.cell.styles.fillColor = [255, 243, 224];
+                        } else if (data.row.raw[0] === '' && data.column.index === 1 && data.row.index > 11) {
+                            data.cell.styles.fontStyle = 'italic';
+                        }
+                    }
+                }
+            });
+        }
+
+        // ==== Procurement Summary ====
+        startY = sectionTitle('PROCUREMENT SUMMARY');
+        
+        const procurementData = [];
+        const procurementTable = document.getElementById('procurementTable');
+        const procurementRows = procurementTable.querySelectorAll('tbody tr');
+        
+        procurementRows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 4) {
+                procurementData.push([
+                    cells[0].textContent.trim(),
+                    cells[1].textContent.trim(),
+                    cells[2].textContent.trim(),
+                    cells[3].textContent.trim()
+                ]);
+            }
+        });
+
+        doc.autoTable({
+            ...TABLE_OPTS,
+            startY: startY,
+            head: [['Item', 'Qty Needed', 'Packaging', 'Units to Order']],
+            body: procurementData,
+            columnStyles: {
+                0: { cellWidth: 120 },
+                1: { cellWidth: 60, halign: 'right' },
+                2: { cellWidth: 80 },
+                3: { cellWidth: 60, halign: 'right' }
+            }
+        });
+
+        const fileName = (projectData.projectName || 'estimate').replace(/[^a-z0-9]/gi, '-') + '_electrical_boxes_estimate.pdf';
+        doc.save(fileName);
+
+    } catch (e) {
+        console.error('PDF Generation Error:', e);
+        alert('Error generating PDF: ' + e.message);
     }
-    }
-    
-    // Add labor calculation details
-    let laborYPos = yPos + 20;
-    doc.text('Labor Calculation Details:', 20, laborYPos);
-    laborYPos += 10;
-    doc.text('Productivity: ' + projectData.labor.productivity + ' boxes/hour per worker', 30, laborYPos);
-    laborYPos += 10;
-    doc.text('Crew Size: ' + projectData.labor.crewSize + ' workers', 30, laborYPos);
-    laborYPos += 10;
-    doc.text('Labor Rate: ' + formatCurrency(projectData.labor.laborRate) + '/hour', 30, laborYPos);
-    laborYPos += 10;
-    doc.text('Work Hours: ' + projectData.labor.workHours + ' hours/day', 30, laborYPos);
-    
-    // Save the PDF
-    doc.save('Electrical_Estimate_' + projectData.projectName.replace(/\s+/g, '_') + '.pdf');
-    }
+}
+
+// Update the event listener to use the new function
+document.getElementById('exportPdfBtn').addEventListener('click', exportToPDF);
     
     // Export to Excel
     function exportToExcel() {
