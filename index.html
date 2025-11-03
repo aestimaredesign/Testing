@@ -2309,12 +2309,12 @@ input:focus, select:focus, textarea:focus {
     }
     
     // Enhanced PDF Export Functions for Multi-Wire
-    function getSelectedCurrency() {
+function getSelectedCurrency() {
     const el = document.getElementById('currency');
     return el ? el.value : 'PHP';
-    }
+}
 
-    function getPdfCurrencyPrefix(code) {
+function getPdfCurrencyPrefix(code) {
     switch (code) {
         case 'PHP': return 'PHP ';
         case 'USD': return '$';
@@ -2322,23 +2322,23 @@ input:focus, select:focus, textarea:focus {
         case 'JPY': return '¥';
         default: return code + ' ';
     }
-    }
+}
 
-    function formatNumberForPDF(num, decimals = 2) {
+function formatNumberForPDF(num, decimals = 2) {
     if (typeof num !== 'number' || isNaN(num)) return '0';
     return num.toLocaleString('en-US', {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals
     });
-    }
+}
 
-    function formatCurrencyForPDF(n) {
+function formatCurrencyForPDF(n) {
     if (typeof n !== 'number' || isNaN(n)) return '0.00';
     const prefix = getPdfCurrencyPrefix(getSelectedCurrency());
     return prefix + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
+}
 
-    function exportToPDF() {
+function exportToPDF() {
     if (!projectData.totals) {
         alert('No results to export. Please calculate an estimate first.');
         return;
@@ -2454,69 +2454,320 @@ input:focus, select:focus, textarea:focus {
         const circuitBody = [];
         let totalBoxes = 0;
 
-        projectData.circuits.forEach(circuit => {
-            const nec = circuit.necResult;
-            const status = nec.isCompliant ? 'COMPLIANT' : 'NON-COMPLIANT';
+        if (projectData.circuits && projectData.circuits.length > 0) {
+            projectData.circuits.forEach(circuit => {
+                const nec = circuit.necResult;
+                const status = nec.isCompliant ? 'COMPLIANT' : 'NON-COMPLIANT';
+                circuitBody.push([
+                    circuit.description,
+                    circuit.wireSize + ' AWG',
+                    (circuit.percentage * 100).toFixed(0) + '%',
+                    circuit.circuitBoxes.toString(),
+                    status
+                ]);
+                totalBoxes += circuit.circuitBoxes;
+            });
+
+            // Add total row
             circuitBody.push([
-                circuit.description,
-                circuit.wireSize + ' AWG',
-                (circuit.percentage * 100).toFixed(0) + '%',
-                circuit.circuitBoxes.toString(),
-                status
+                'TOTAL',
+                'Multi-Wire',
+                '100%',
+                totalBoxes.toString(),
+                'OPTIMIZED'
             ]);
-            totalBoxes += circuit.circuitBoxes;
+
+            // Column widths for circuit summary
+            const circuitColumnStyles = {
+                0: { cellWidth: availableWidth * 0.35 }, // Circuit Type
+                1: { cellWidth: availableWidth * 0.15 }, // Wire Size
+                2: { cellWidth: availableWidth * 0.15 }, // Percentage
+                3: { cellWidth: availableWidth * 0.15 }, // Boxes
+                4: { cellWidth: availableWidth * 0.20 }  // NEC Status
+            };
+
+            doc.autoTable({
+                ...TABLE_OPTS,
+                startY: startY,
+                head: circuitHead,
+                body: circuitBody,
+                columnStyles: circuitColumnStyles,
+                didParseCell: function(data) {
+                    // Style the total row
+                    if (data.section === 'body' && data.row.index === circuitBody.length - 1) {
+                        data.cell.styles.fontStyle = 'bold';
+                        data.cell.styles.fillColor = [220, 240, 220];
+                    }
+                    // Color code NEC status
+                    if (data.column.index === 4) {
+                        if (data.cell.raw === 'COMPLIANT') {
+                            data.cell.styles.textColor = [46, 125, 50];
+                        } else if (data.cell.raw === 'NON-COMPLIANT') {
+                            data.cell.styles.textColor = [198, 40, 40];
+                        } else if (data.cell.raw === 'OPTIMIZED') {
+                            data.cell.styles.textColor = [30, 136, 229];
+                        }
+                    }
+                }
+            });
+        }
+
+        // ==== Bill of Quantity ====
+        startY = sectionTitle('BILL OF QUANTITY');
+        
+        const boqHead = [
+            ['Item', 'Description', 'Qty', 'Unit', 'Unit Cost', 'Material Cost', 'Labor Cost']
+        ];
+        
+        const boqBody = [];
+        let totalMaterialCost = 0;
+        let totalLaborCost = 0;
+
+        // Get data from the current table and calculate totals
+        const boqTable = document.getElementById('billOfQuantity');
+        const rows = boqTable.querySelectorAll('tbody tr');
+        
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 7) {
+                const rowData = [
+                    cells[0].textContent.trim(),
+                    cells[1].textContent.trim(),
+                    cells[2].textContent.trim(),
+                    cells[3].textContent.trim(),
+                    cells[4].textContent.trim(),
+                    cells[5].textContent.trim(),
+                    cells[6].textContent.trim()
+                ];
+                boqBody.push(rowData);
+                
+                // Extract numeric values for totals
+                const materialCost = parseFloat(cells[5].textContent.replace(/[^0-9.-]+/g,"")) || 0;
+                const laborCost = parseFloat(cells[6].textContent.replace(/[^0-9.-]+/g,"")) || 0;
+                totalMaterialCost += materialCost;
+                totalLaborCost += laborCost;
+            }
         });
 
-        // Add total row
-        circuitBody.push([
-            'TOTAL',
-            'Multi-Wire',
-            '100%',
-            totalBoxes.toString(),
-            'OPTIMIZED'
+        // Add total direct cost row
+        const totalDirectCost = totalMaterialCost + totalLaborCost;
+        boqBody.push([
+            'TOTAL DIRECT COST',
+            '',
+            '',
+            '',
+            '',
+            formatCurrencyForPDF(totalMaterialCost),
+            formatCurrencyForPDF(totalLaborCost)
         ]);
 
-        // Column widths for circuit summary
-        const circuitColumnStyles = {
-            0: { cellWidth: availableWidth * 0.35 }, // Circuit Type
-            1: { cellWidth: availableWidth * 0.15 }, // Wire Size
-            2: { cellWidth: availableWidth * 0.15 }, // Percentage
-            3: { cellWidth: availableWidth * 0.15 }, // Boxes
-            4: { cellWidth: availableWidth * 0.20 }  // NEC Status
+        // Column widths for full width table
+        const boqColumnStyles = {
+            0: { cellWidth: availableWidth * 0.12 }, // Item
+            1: { cellWidth: availableWidth * 0.25 }, // Description
+            2: { cellWidth: availableWidth * 0.08 }, // Qty
+            3: { cellWidth: availableWidth * 0.08 }, // Unit
+            4: { cellWidth: availableWidth * 0.12 }, // Unit Cost
+            5: { cellWidth: availableWidth * 0.17 }, // Material Cost
+            6: { cellWidth: availableWidth * 0.18 }  // Labor Cost
         };
 
         doc.autoTable({
             ...TABLE_OPTS,
             startY: startY,
-            head: circuitHead,
-            body: circuitBody,
-            columnStyles: circuitColumnStyles,
+            head: boqHead,
+            body: boqBody,
+            columnStyles: boqColumnStyles,
             didParseCell: function(data) {
-                // Style the total row
-                if (data.section === 'body' && data.row.index === circuitBody.length - 1) {
+                // Bold and style the total direct cost row
+                if (data.section === 'body' && data.row.index === boqBody.length - 1) {
                     data.cell.styles.fontStyle = 'bold';
-                    data.cell.styles.fillColor = [220, 240, 220];
+                    data.cell.styles.fillColor = [240, 240, 240];
+                    data.cell.styles.textColor = [BRAND.r, BRAND.g, BRAND.b];
                 }
-                // Color code NEC status
-                if (data.column.index === 4) {
-                    if (data.cell.raw === 'COMPLIANT') {
-                        data.cell.styles.textColor = [46, 125, 50];
-                    } else if (data.cell.raw === 'NON-COMPLIANT') {
-                        data.cell.styles.textColor = [198, 40, 40];
-                    } else if (data.cell.raw === 'OPTIMIZED') {
-                        data.cell.styles.textColor = [30, 136, 229];
+                // Right align numeric columns
+                if (data.column.index >= 4) {
+                    data.cell.styles.halign = 'right';
+                }
+                if (data.column.index === 2) { // Qty column
+                    data.cell.styles.halign = 'right';
+                }
+            }
+        });
+
+        // ==== Simplified Cost Breakdown ====
+        startY = sectionTitle('COST BREAKDOWN');
+        
+        const costData = [
+            ['Direct Cost', formatCurrencyForPDF(totalDirectCost)],
+            ['Overhead', formatCurrencyForPDF(projectData.totals.overheadCost)],
+            ['Profit Margin', formatCurrencyForPDF(projectData.totals.profitCost)],
+            ['TOTAL COST', formatCurrencyForPDF(projectData.totals.totalCost)]
+        ];
+
+        // Column widths for cost breakdown
+        const costColumnStyles = {
+            0: { cellWidth: availableWidth * 0.6, fontStyle: 'bold' },
+            1: { cellWidth: availableWidth * 0.4, halign: 'right', fontStyle: 'bold' }
+        };
+
+        doc.autoTable({
+            ...TABLE_OPTS,
+            startY: startY,
+            head: [['Category', 'Amount']],
+            body: costData,
+            columnStyles: costColumnStyles,
+            didParseCell: function(data) {
+                if (data.section === 'body') {
+                    // Style the total row
+                    if (data.row.index === costData.length - 1) {
+                        data.cell.styles.fillColor = [220, 240, 220];
+                        data.cell.styles.fontStyle = 'bold';
+                        data.cell.styles.textColor = [BRAND.r, BRAND.g, BRAND.b];
                     }
                 }
             }
         });
 
-        // Continue with the rest of the PDF sections (Bill of Quantity, Cost Breakdown, etc.)
-        // ... [Rest of the PDF export code remains the same as previous implementation]
+        // ==== Project Summary ====
+        startY = sectionTitle('PROJECT SUMMARY');
         
-        // For brevity, I'm including the key multi-wire enhancements above
-        // The complete PDF export would continue with Bill of Quantity, Cost Breakdown, 
-        // Project Summary, NEC Compliance Details, and Procurement Summary sections
+        const summaryData = [
+            ['Total Boxes', Math.round(projectData.quantities.totalOutlets) + ' boxes'],
+            ['Total Labor Hours', formatNumberForPDF(projectData.labor.totalLaborHours, 1) + ' hours'],
+            ['Project Duration', formatNumberForPDF(projectData.labor.totalLaborHours / projectData.labor.workHours, 1) + ' days'],
+            ['Crew Size', projectData.labor.crewSize + ' workers'],
+            ['Productivity', projectData.labor.productivity + ' boxes/hour/worker'],
+            ['Labor Rate', formatCurrencyForPDF(projectData.labor.laborRate) + '/hour']
+        ];
+
+        // Column widths for project summary
+        const summaryColumnStyles = {
+            0: { cellWidth: availableWidth * 0.5 },
+            1: { cellWidth: availableWidth * 0.5, halign: 'right' }
+        };
+
+        doc.autoTable({
+            ...TABLE_OPTS,
+            startY: startY,
+            head: [['Parameter', 'Value']],
+            body: summaryData,
+            columnStyles: summaryColumnStyles
+        });
+
+        // ==== Multi-Wire NEC Compliance Details ====
+        if (projectData.circuits && projectData.circuits.length > 0) {
+            startY = sectionTitle('MULTI-WIRE NEC 314.16 COMPLIANCE DETAILS');
+            
+            // Find the worst-case circuit for overall compliance
+            let worstCaseCircuit = null;
+            let maxVolumeRequired = 0;
+            
+            projectData.circuits.forEach(circuit => {
+                if (circuit.necResult.volumeWithSafety > maxVolumeRequired) {
+                    maxVolumeRequired = circuit.necResult.volumeWithSafety;
+                    worstCaseCircuit = circuit;
+                }
+            });
+
+            if (worstCaseCircuit) {
+                const nec = worstCaseCircuit.necResult;
+                const necData = [
+                    ['Worst-Case Circuit', worstCaseCircuit.description + ' (' + worstCaseCircuit.wireSize + ' AWG)'],
+                    ['Conductor Size', worstCaseCircuit.wireSize + ' AWG'],
+                    ['Current Conductors', worstCaseCircuit.conductors],
+                    ['Pigtails', nec.pigtails],
+                    ['Grounding Conductors', nec.groundingConductors],
+                    ['Devices', worstCaseCircuit.devices],
+                    ['Cable Clamps', worstCaseCircuit.clamps],
+                    ['Volume per Conductor', formatNumberForPDF(nec.volPerConductor, 2) + ' cu. in.'],
+                    ['Total Volume Required', formatNumberForPDF(nec.totalVolumeRequired, 2) + ' cu. in.'],
+                    ['Safety Factor', nec.safetyFactor + '%'],
+                    ['Volume with Safety', formatNumberForPDF(nec.volumeWithSafety, 2) + ' cu. in.'],
+                    ['Minimum Required Box', nec.smallestSuitableBox || 'Custom box required'],
+                    ['Compliance Status', nec.isCompliant ? 'COMPLIANT' : 'NON-COMPLIANT']
+                ];
+
+                // Add NEC adjustments if any
+                if (projectData.necAdjustments && projectData.necAdjustments.length > 0) {
+                    necData.push(['', '']);
+                    necData.push(['NEC-Driven Adjustments:', '']);
+                    projectData.necAdjustments.forEach(adjustment => {
+                        necData.push(['', adjustment]);
+                    });
+                }
+
+                // Column widths for NEC details
+                const necColumnStyles = {
+                    0: { cellWidth: availableWidth * 0.6, fontStyle: 'bold' },
+                    1: { cellWidth: availableWidth * 0.4 }
+                };
+
+                doc.autoTable({
+                    ...TABLE_OPTS,
+                    startY: startY,
+                    head: [['Parameter', 'Value']],
+                    body: necData,
+                    columnStyles: necColumnStyles,
+                    didParseCell: function(data) {
+                        if (data.section === 'body') {
+                            // Highlight compliance status
+                            if (data.cell.raw === 'COMPLIANT') {
+                                data.cell.styles.textColor = [46, 125, 50]; // Green
+                                data.cell.styles.fontStyle = 'bold';
+                            } else if (data.cell.raw === 'NON-COMPLIANT') {
+                                data.cell.styles.textColor = [198, 40, 40]; // Red
+                                data.cell.styles.fontStyle = 'bold';
+                            }
+                            
+                            // Style adjustments section
+                            if (data.row.raw[0] === 'NEC-Driven Adjustments:') {
+                                data.cell.styles.fontStyle = 'bold';
+                                data.cell.styles.fillColor = [255, 243, 224];
+                            } else if (data.row.raw[0] === '' && data.column.index === 1 && data.row.index > 12) {
+                                data.cell.styles.fontStyle = 'italic';
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // ==== Procurement Summary ====
+        startY = sectionTitle('PROCUREMENT SUMMARY');
         
+        const procurementData = [];
+        const procurementTable = document.getElementById('procurementTable');
+        const procurementRows = procurementTable.querySelectorAll('tbody tr');
+        
+        procurementRows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 4) {
+                procurementData.push([
+                    cells[0].textContent.trim(),
+                    cells[1].textContent.trim(),
+                    cells[2].textContent.trim(),
+                    cells[3].textContent.trim()
+                ]);
+            }
+        });
+
+        // Column widths for procurement summary
+        const procurementColumnStyles = {
+            0: { cellWidth: availableWidth * 0.35 }, // Item
+            1: { cellWidth: availableWidth * 0.15, halign: 'right' }, // Qty Needed
+            2: { cellWidth: availableWidth * 0.25 }, // Packaging
+            3: { cellWidth: availableWidth * 0.25, halign: 'right' } // Units to Order
+        };
+
+        doc.autoTable({
+            ...TABLE_OPTS,
+            startY: startY,
+            head: [['Item', 'Qty Needed', 'Packaging', 'Units to Order']],
+            body: procurementData,
+            columnStyles: procurementColumnStyles
+        });
+
         const fileName = (projectData.projectName || 'estimate').replace(/[^a-z0-9]/gi, '-') + '_multi_wire_electrical_estimate.pdf';
         doc.save(fileName);
 
@@ -2524,7 +2775,10 @@ input:focus, select:focus, textarea:focus {
         console.error('PDF Generation Error:', e);
         alert('Error generating PDF: ' + e.message);
     }
-    }
+}
+
+// Update the event listener to use the new function
+document.getElementById('exportPdfBtn').addEventListener('click', exportToPDF);
     
     // Export to Excel
     function exportToExcel() {
