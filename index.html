@@ -2104,7 +2104,7 @@ function exportToPDF() {
             doc.text(`NEC 2023 Compliant`, pageWidth - CONTENT_MARGIN_R, pageHeight - 12, { align: 'right' });
         }
 
-        // Common AutoTable options
+        // Common AutoTable options - Full width tables
         const TABLE_OPTS = {
             margin: { 
                 left: CONTENT_MARGIN_L, 
@@ -2115,7 +2115,7 @@ function exportToPDF() {
             styles: {
                 font: 'helvetica',
                 fontSize: 7,
-                cellPadding: 2.5,
+                cellPadding: 3,
                 lineWidth: 0.25,
                 lineColor: 100,
                 overflow: 'linebreak',
@@ -2128,7 +2128,8 @@ function exportToPDF() {
                 fontSize: 7
             },
             alternateRowStyles: { fillColor: [245, 245, 245] },
-            didDrawPage: drawHeaderFooter
+            didDrawPage: drawHeaderFooter,
+            tableWidth: 'auto' // This makes tables stretch to full width
         };
 
         // Section helper
@@ -2141,16 +2142,8 @@ function exportToPDF() {
             return y + 4;
         }
 
-        // Column widths
-        const w = {
-            item: 80,
-            desc: 135,
-            qty: 40,
-            unit: 28,
-            unitCost: 60,
-            matCost: 70,
-            labCost: 70
-        };
+        // Calculate available width for tables
+        const availableWidth = pageWidth - CONTENT_MARGIN_L - CONTENT_MARGIN_R;
 
         // ==== Bill of Quantity ====
         let startY = sectionTitle('BILL OF QUANTITY');
@@ -2160,9 +2153,10 @@ function exportToPDF() {
         ];
         
         const boqBody = [];
-        const currencySymbol = getSelectedCurrency();
+        let totalMaterialCost = 0;
+        let totalLaborCost = 0;
 
-        // Get data from the current table
+        // Get data from the current table and calculate totals
         const boqTable = document.getElementById('billOfQuantity');
         const rows = boqTable.querySelectorAll('tbody tr');
         
@@ -2179,74 +2173,91 @@ function exportToPDF() {
                     cells[6].textContent.trim()
                 ];
                 boqBody.push(rowData);
+                
+                // Extract numeric values for totals
+                const materialCost = parseFloat(cells[5].textContent.replace(/[^0-9.-]+/g,"")) || 0;
+                const laborCost = parseFloat(cells[6].textContent.replace(/[^0-9.-]+/g,"")) || 0;
+                totalMaterialCost += materialCost;
+                totalLaborCost += laborCost;
             }
         });
 
-        // Add total row
-        const totalRow = boqTable.querySelector('tfoot tr');
-        if (totalRow) {
-            const totalCells = totalRow.querySelectorAll('td');
-            if (totalCells.length >= 7) {
-                boqBody.push([
-                    'TOTAL',
-                    '',
-                    '',
-                    '',
-                    '',
-                    totalCells[5].textContent.trim(),
-                    totalCells[6].textContent.trim()
-                ]);
-            }
-        }
+        // Add total direct cost row
+        const totalDirectCost = totalMaterialCost + totalLaborCost;
+        boqBody.push([
+            'TOTAL DIRECT COST',
+            '',
+            '',
+            '',
+            '',
+            formatCurrencyForPDF(totalMaterialCost),
+            formatCurrencyForPDF(totalLaborCost)
+        ]);
+
+        // Column widths for full width table
+        const boqColumnStyles = {
+            0: { cellWidth: availableWidth * 0.12 }, // Item
+            1: { cellWidth: availableWidth * 0.25 }, // Description
+            2: { cellWidth: availableWidth * 0.08 }, // Qty
+            3: { cellWidth: availableWidth * 0.08 }, // Unit
+            4: { cellWidth: availableWidth * 0.12 }, // Unit Cost
+            5: { cellWidth: availableWidth * 0.17 }, // Material Cost
+            6: { cellWidth: availableWidth * 0.18 }  // Labor Cost
+        };
 
         doc.autoTable({
             ...TABLE_OPTS,
             startY: startY,
             head: boqHead,
             body: boqBody,
-            columnStyles: {
-                0: { cellWidth: w.item },
-                1: { cellWidth: w.desc, cellPadding: 2 },
-                2: { cellWidth: w.qty, halign: 'right' },
-                3: { cellWidth: w.unit, halign: 'center' },
-                4: { cellWidth: w.unitCost, halign: 'right' },
-                5: { cellWidth: w.matCost, halign: 'right' },
-                6: { cellWidth: w.labCost, halign: 'right' }
-            },
+            columnStyles: boqColumnStyles,
             didParseCell: function(data) {
-                // Bold the total row
+                // Bold and style the total direct cost row
                 if (data.section === 'body' && data.row.index === boqBody.length - 1) {
                     data.cell.styles.fontStyle = 'bold';
                     data.cell.styles.fillColor = [240, 240, 240];
+                    data.cell.styles.textColor = [BRAND.r, BRAND.g, BRAND.b];
+                }
+                // Right align numeric columns
+                if (data.column.index >= 4) {
+                    data.cell.styles.halign = 'right';
+                }
+                if (data.column.index === 2) { // Qty column
+                    data.cell.styles.halign = 'right';
                 }
             }
         });
 
-        // ==== Cost Breakdown ====
+        // ==== Simplified Cost Breakdown ====
         startY = sectionTitle('COST BREAKDOWN');
         
         const costData = [
-            ['Material Cost', formatCurrencyForPDF(projectData.totals.totalMaterialCost)],
-            ['Labor Cost', formatCurrencyForPDF(projectData.totals.totalLaborCost)],
-            ['Direct Cost', formatCurrencyForPDF(projectData.totals.directCost)],
+            ['Direct Cost', formatCurrencyForPDF(totalDirectCost)],
             ['Overhead', formatCurrencyForPDF(projectData.totals.overheadCost)],
-            ['Profit', formatCurrencyForPDF(projectData.totals.profitCost)],
+            ['Profit Margin', formatCurrencyForPDF(projectData.totals.profitCost)],
             ['TOTAL COST', formatCurrencyForPDF(projectData.totals.totalCost)]
         ];
+
+        // Column widths for cost breakdown
+        const costColumnStyles = {
+            0: { cellWidth: availableWidth * 0.6, fontStyle: 'bold' },
+            1: { cellWidth: availableWidth * 0.4, halign: 'right', fontStyle: 'bold' }
+        };
 
         doc.autoTable({
             ...TABLE_OPTS,
             startY: startY,
             head: [['Category', 'Amount']],
             body: costData,
-            columnStyles: {
-                0: { cellWidth: 200, fontStyle: 'bold' },
-                1: { cellWidth: 100, halign: 'right', fontStyle: 'bold' }
-            },
+            columnStyles: costColumnStyles,
             didParseCell: function(data) {
-                if (data.section === 'body' && data.row.index === costData.length - 1) {
-                    data.cell.styles.fillColor = [220, 240, 220];
-                    data.cell.styles.fontStyle = 'bold';
+                if (data.section === 'body') {
+                    // Style the total row
+                    if (data.row.index === costData.length - 1) {
+                        data.cell.styles.fillColor = [220, 240, 220];
+                        data.cell.styles.fontStyle = 'bold';
+                        data.cell.styles.textColor = [BRAND.r, BRAND.g, BRAND.b];
+                    }
                 }
             }
         });
@@ -2263,15 +2274,18 @@ function exportToPDF() {
             ['Labor Rate', formatCurrencyForPDF(projectData.labor.laborRate) + '/hour']
         ];
 
+        // Column widths for project summary
+        const summaryColumnStyles = {
+            0: { cellWidth: availableWidth * 0.5 },
+            1: { cellWidth: availableWidth * 0.5, halign: 'right' }
+        };
+
         doc.autoTable({
             ...TABLE_OPTS,
             startY: startY,
             head: [['Parameter', 'Value']],
             body: summaryData,
-            columnStyles: {
-                0: { cellWidth: 150 },
-                1: { cellWidth: 150, halign: 'right' }
-            }
+            columnStyles: summaryColumnStyles
         });
 
         // ==== NEC Compliance Details ====
@@ -2302,15 +2316,18 @@ function exportToPDF() {
                 });
             }
 
+            // Column widths for NEC details
+            const necColumnStyles = {
+                0: { cellWidth: availableWidth * 0.6, fontStyle: 'bold' },
+                1: { cellWidth: availableWidth * 0.4 }
+            };
+
             doc.autoTable({
                 ...TABLE_OPTS,
                 startY: startY,
                 head: [['Parameter', 'Value']],
                 body: necData,
-                columnStyles: {
-                    0: { cellWidth: 180, fontStyle: 'bold' },
-                    1: { cellWidth: 120 }
-                },
+                columnStyles: necColumnStyles,
                 didParseCell: function(data) {
                     if (data.section === 'body') {
                         // Highlight compliance status
@@ -2353,17 +2370,20 @@ function exportToPDF() {
             }
         });
 
+        // Column widths for procurement summary
+        const procurementColumnStyles = {
+            0: { cellWidth: availableWidth * 0.35 }, // Item
+            1: { cellWidth: availableWidth * 0.15, halign: 'right' }, // Qty Needed
+            2: { cellWidth: availableWidth * 0.25 }, // Packaging
+            3: { cellWidth: availableWidth * 0.25, halign: 'right' } // Units to Order
+        };
+
         doc.autoTable({
             ...TABLE_OPTS,
             startY: startY,
             head: [['Item', 'Qty Needed', 'Packaging', 'Units to Order']],
             body: procurementData,
-            columnStyles: {
-                0: { cellWidth: 120 },
-                1: { cellWidth: 60, halign: 'right' },
-                2: { cellWidth: 80 },
-                3: { cellWidth: 60, halign: 'right' }
-            }
+            columnStyles: procurementColumnStyles
         });
 
         const fileName = (projectData.projectName || 'estimate').replace(/[^a-z0-9]/gi, '-') + '_electrical_boxes_estimate.pdf';
